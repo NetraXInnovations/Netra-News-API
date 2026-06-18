@@ -30,25 +30,25 @@ export class CleanupService {
       const totalArticlesRes = await db.query('SELECT COUNT(*)::int as count FROM articles');
       const totalBefore = totalArticlesRes.rows[0].count;
 
-      // 2. Count articles older than 7 days
+      // 2. Count articles older than 3 days
       const scannedRes = await db.query(
         `SELECT COUNT(*)::int as count FROM articles 
-         WHERE created_at < NOW() - INTERVAL '7 days'`
+         WHERE created_at < NOW() - INTERVAL '3 days'`
       );
       scannedCount = scannedRes.rows[0].count;
 
-      // 3. Find articles that are older than 7 days but SAVED (to keep count of retained)
+      // 3. Find articles that are older than 3 days but SAVED (to keep count of retained)
       const savedOldRes = await db.query(
         `SELECT COUNT(*)::int as count FROM articles a
          JOIN saved_articles s ON a.id = s.article_id
-         WHERE a.created_at < NOW() - INTERVAL '7 days'`
+         WHERE a.created_at < NOW() - INTERVAL '3 days'`
       );
       const savedOldCount = savedOldRes.rows[0].count;
 
       // 4. Retrieve list of articles that will be deleted for logging
       const toDeleteRes = await db.query(
         `SELECT id, title, source_url FROM articles
-         WHERE created_at < NOW() - INTERVAL '7 days'
+         WHERE created_at < NOW() - INTERVAL '3 days'
            AND id NOT IN (SELECT article_id FROM saved_articles)`
       );
       const articlesToDelete = toDeleteRes.rows;
@@ -73,7 +73,7 @@ export class CleanupService {
       if (deletedCount > 0) {
         await db.query(
           `DELETE FROM articles
-           WHERE created_at < NOW() - INTERVAL '7 days'
+           WHERE created_at < NOW() - INTERVAL '3 days'
              AND id NOT IN (SELECT article_id FROM saved_articles)`
         );
       }
