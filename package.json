@@ -1,6 +1,9 @@
 {
   "name": "netra-news-api",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "Blind-first news backend platform for Netra News Hub",
   "main": "dist/server.js",
   "scripts": {
