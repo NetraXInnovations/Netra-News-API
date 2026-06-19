@@ -356,7 +356,27 @@ export class RssIngestionService {
     'https://feeds.bbci.co.uk/arabic/rss.xml?cat=health',
     'https://arabic.cnn.com/rss?cat=health',
     'https://www.aljazeera.net/aljazeerarss/ar/sport.xml',
-    'https://feeds.bbci.co.uk/arabic/rss.xml?cat=sports'
+    'https://feeds.bbci.co.uk/arabic/rss.xml?cat=sports',
+
+    // French
+    'https://www.lemonde.fr/rss/une.xml',
+    'https://www.lefigaro.fr/rss/figaro_actualites.xml',
+    'https://www.france24.com/fr/rss',
+    'https://www.lemonde.fr/international/rss_full.xml',
+    'https://www.france24.com/fr/europe/rss',
+    'https://www.lemonde.fr/europe/rss_full.xml',
+    'https://www.lefigaro.fr/rss/figaro_politique.xml',
+    'https://www.lemonde.fr/politique/rss_full.xml',
+    'https://www.lemonde.fr/economie/rss_full.xml',
+    'https://www.lesechos.fr/rss/rss_une.xml',
+    'https://www.france24.com/fr/sciences-technologies/rss',
+    'https://www.lemonde.fr/pixels/rss_full.xml',
+    'https://www.france24.com/fr/sciences-technologies/rss?cat=science',
+    'https://www.lemonde.fr/sciences/rss_full.xml',
+    'https://www.lemonde.fr/sante/rss_full.xml',
+    'https://www.france24.com/fr/sciences-technologies/rss?cat=health',
+    'https://www.lequipe.fr/rss/actu_rss.xml',
+    'https://www.france24.com/fr/sports/rss'
   ]);
 
   /**
