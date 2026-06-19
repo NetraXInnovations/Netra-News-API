@@ -501,7 +501,8 @@ export class RssIngestionService {
         // 5. Store article
         await db.query(
           `INSERT INTO articles (language_id, category_id, title, content, source_url, published_at, reading_time, is_current_affairs)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           ON CONFLICT (source_url) DO NOTHING`,
           [
             languageId,
             categoryId,
