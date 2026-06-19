@@ -231,7 +231,27 @@ export class RssIngestionService {
     'https://kannada.oneindia.com/rss/feeds/kannada-lifestyle-fb.xml',
     'https://kannada.oneindia.com/rss/feeds/kannada-health-fb.xml',
     'https://kannada.oneindia.com/rss/feeds/kannada-sports-fb.xml',
-    'https://kannada.oneindia.com/rss/feeds/kannada-news-fb.xml?cat=sports'
+    'https://kannada.oneindia.com/rss/feeds/kannada-news-fb.xml?cat=sports',
+
+    // Malayalam
+    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-fb.xml',
+    'https://www.onmanorama.com/news/kerala.rss',
+    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-fb.xml?cat=india',
+    'https://www.onmanorama.com/news/india.rss',
+    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-world-fb.xml',
+    'https://www.onmanorama.com/news/world.rss',
+    'https://www.onmanorama.com/news/india.rss?cat=politics',
+    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-fb.xml?cat=politics',
+    'https://www.onmanorama.com/business.rss',
+    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-fb.xml?cat=business',
+    'https://malayalam.oneindia.com/rss/feeds/artificial-intelligence-fb.xml',
+    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-fb.xml?cat=tech',
+    'https://malayalam.oneindia.com/rss/feeds/artificial-intelligence-fb.xml?cat=science',
+    'https://www.onmanorama.com/news/world.rss?cat=science',
+    'https://malayalam.oneindia.com/rss/feeds/malayalam-lifestyle-fb.xml?cat=health',
+    'https://www.onmanorama.com/lifestyle/health.rss',
+    'https://malayalam.oneindia.com/rss/feeds/malayalam-sports-fb.xml',
+    'https://www.onmanorama.com/sports.rss'
   ]);
 
   /**
