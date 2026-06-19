@@ -133,11 +133,12 @@ INSERT INTO languages (id, name, code, enabled) VALUES
 (9, 'Marathi', 'mr', true),
 (10, 'Odia', 'or', true),
 (11, 'Punjabi', 'pa', true),
-(12, 'Urdu', 'ur', true)
+(12, 'Urdu', 'ur', true),
+(13, 'Nepali', 'ne', true)
 ON CONFLICT (id) DO UPDATE SET enabled = EXCLUDED.enabled;
 
 -- Reset serial sequences for languages
-SELECT setval('languages_id_seq', 12);
+SELECT setval('languages_id_seq', 13);
 
 -- 2. Populating categories
 INSERT INTO categories (id, language_id, name, enabled) VALUES
@@ -363,11 +364,32 @@ INSERT INTO categories (id, language_id, name, enabled) VALUES
 (197, 12, 'آٹو', true),
 (198, 12, 'ثقافت', true),
 (199, 12, 'سفر', true),
-(200, 12, 'اسٹارٹ اپس', true)
+(200, 12, 'اسٹارٹ اپس', true),
+
+-- Nepali Categories (id: 201 - 219)
+(201, 13, 'नेपाल', true),
+(202, 13, 'काठमाडौं', true),
+(203, 13, 'भारत', true),
+(204, 13, 'विश्व', true),
+(205, 13, 'राजनीति', true),
+(206, 13, 'व्यापार', true),
+(207, 13, 'प्रविधि', true),
+(208, 13, 'विज्ञान', true),
+(209, 13, 'स्वास्थ्य', true),
+(210, 13, 'खेलकुद', true),
+(211, 13, 'क्रिकेट', true),
+(212, 13, 'मनोरञ्जन', true),
+(213, 13, 'शिक्षा', true),
+(214, 13, 'जीवनशैली', true),
+(215, 13, 'कृषि', true),
+(216, 13, 'अटोमोबाइल', true),
+(217, 13, 'संस्कृति', true),
+(218, 13, 'यात्रा', true),
+(219, 13, 'स्टार्टअप', true)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, enabled = EXCLUDED.enabled;
 
 -- Reset serial sequences for categories
-SELECT setval('categories_id_seq', 200);
+SELECT setval('categories_id_seq', 219);
 
 -- 3. Populating RSS Sources
 INSERT INTO rss_sources (language_id, category_id, source_name, rss_url, enabled, priority) VALUES
@@ -734,5 +756,45 @@ INSERT INTO rss_sources (language_id, category_id, source_name, rss_url, enabled
 (12, 199, 'UrduPoint - Travel', 'https://urdupoint.com/rss/travel.xml', true, 1),
 (12, 199, 'UrduPoint - Lifestyle (Travel)', 'https://urdupoint.com/rss/lifestyle.xml', true, 1),
 (12, 200, 'UrduPoint - Business (Startups)', 'https://urdupoint.com/rss/business.xml', true, 1),
-(12, 200, 'UrduPoint - Tech (Startups)', 'https://urdupoint.com/rss/technology.xml', true, 1)
+(12, 200, 'UrduPoint - Tech (Startups)', 'https://urdupoint.com/rss/technology.xml', true, 1),
+
+-- Nepali RSS Feeds
+(13, 201, 'OnlineKhabar - Nepal', 'https://www.onlinekhabar.com/feed', true, 1),
+(13, 201, 'Ratopati - Nepal', 'https://www.ratopati.com/rss', true, 1),
+(13, 202, 'OnlineKhabar - Kathmandu', 'https://www.onlinekhabar.com/feed?cat=kathmandu', true, 1),
+(13, 202, 'Setopati - Kathmandu', 'https://www.setopati.com/feed?cat=kathmandu', true, 1),
+(13, 203, 'OnlineKhabar - India', 'https://www.onlinekhabar.com/feed?cat=india', true, 1),
+(13, 203, 'Kantipur - India', 'https://www.kantipur.com/rss?cat=india', true, 1),
+(13, 204, 'OnlineKhabar - World', 'https://www.onlinekhabar.com/feed?cat=world', true, 1),
+(13, 204, 'Kantipur - World', 'https://www.kantipur.com/rss?cat=world', true, 1),
+(13, 205, 'Setopati - Politics', 'https://www.setopati.com/feed?cat=politics', true, 1),
+(13, 205, 'Ratopati - Politics', 'https://www.ratopati.com/rss?cat=politics', true, 1),
+(13, 206, 'OnlineKhabar - Business', 'https://www.onlinekhabar.com/feed?cat=business', true, 1),
+(13, 206, 'Kantipur - Business', 'https://www.kantipur.com/rss?cat=business', true, 1),
+(13, 207, 'OnlineKhabar - Technology', 'https://www.onlinekhabar.com/feed?cat=tech', true, 1),
+(13, 207, 'Setopati - Technology', 'https://www.setopati.com/feed?cat=tech', true, 1),
+(13, 208, 'OnlineKhabar - Science', 'https://www.onlinekhabar.com/feed?cat=science', true, 1),
+(13, 208, 'Kantipur - Science', 'https://www.kantipur.com/rss?cat=science', true, 1),
+(13, 209, 'OnlineKhabar - Health', 'https://www.onlinekhabar.com/feed?cat=health', true, 1),
+(13, 209, 'Setopati - Health', 'https://www.setopati.com/feed?cat=health', true, 1),
+(13, 210, 'OnlineKhabar - Sports', 'https://www.onlinekhabar.com/feed?cat=sports', true, 1),
+(13, 210, 'Ratopati - Sports', 'https://www.ratopati.com/rss?cat=sports', true, 1),
+(13, 211, 'OnlineKhabar - Cricket', 'https://www.onlinekhabar.com/feed?cat=cricket', true, 1),
+(13, 211, 'Ratopati - Cricket', 'https://www.ratopati.com/rss?cat=cricket', true, 1),
+(13, 212, 'OnlineKhabar - Entertainment', 'https://www.onlinekhabar.com/feed?cat=entertainment', true, 1),
+(13, 212, 'Setopati - Entertainment', 'https://www.setopati.com/feed?cat=entertainment', true, 1),
+(13, 213, 'OnlineKhabar - Education', 'https://www.onlinekhabar.com/feed?cat=education', true, 1),
+(13, 213, 'Kantipur - Education', 'https://www.kantipur.com/rss?cat=education', true, 1),
+(13, 214, 'OnlineKhabar - Lifestyle', 'https://www.onlinekhabar.com/feed?cat=lifestyle', true, 1),
+(13, 214, 'Setopati - Lifestyle', 'https://www.setopati.com/feed?cat=lifestyle', true, 1),
+(13, 215, 'OnlineKhabar - Agriculture', 'https://www.onlinekhabar.com/feed?cat=agriculture', true, 1),
+(13, 215, 'Ratopati - Agriculture', 'https://www.ratopati.com/rss?cat=agriculture', true, 1),
+(13, 216, 'OnlineKhabar - Automobile', 'https://www.onlinekhabar.com/feed?cat=auto', true, 1),
+(13, 216, 'Kantipur - Automobile', 'https://www.kantipur.com/rss?cat=auto', true, 1),
+(13, 217, 'Setopati - Culture', 'https://www.setopati.com/feed?cat=culture', true, 1),
+(13, 217, 'Kantipur - Culture', 'https://www.kantipur.com/rss?cat=culture', true, 1),
+(13, 218, 'OnlineKhabar - Travel', 'https://www.onlinekhabar.com/feed?cat=travel', true, 1),
+(13, 218, 'Setopati - Travel', 'https://www.setopati.com/feed?cat=travel', true, 1),
+(13, 219, 'OnlineKhabar - Startups', 'https://www.onlinekhabar.com/feed?cat=startups', true, 1),
+(13, 219, 'Kantipur - Startups', 'https://www.kantipur.com/rss?cat=startups', true, 1)
 ON CONFLICT (rss_url) DO NOTHING;

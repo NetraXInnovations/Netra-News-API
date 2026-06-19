@@ -320,7 +320,27 @@ export class RssIngestionService {
     'https://urdupoint.com/rss/health.xml',
     'https://urdupoint.com/rss/lifestyle.xml',
     'https://urdupoint.com/rss/sports.xml',
-    'https://www.inquilab.com/rss/sports.xml'
+    'https://www.inquilab.com/rss/sports.xml',
+
+    // Nepali
+    'https://www.onlinekhabar.com/feed',
+    'https://www.kantipur.com/rss',
+    'https://www.onlinekhabar.com/feed?cat=india',
+    'https://www.kantipur.com/rss?cat=india',
+    'https://www.onlinekhabar.com/feed?cat=world',
+    'https://www.kantipur.com/rss?cat=world',
+    'https://www.setopati.com/feed?cat=politics',
+    'https://www.ratopati.com/rss?cat=politics',
+    'https://www.onlinekhabar.com/feed?cat=business',
+    'https://www.kantipur.com/rss?cat=business',
+    'https://www.onlinekhabar.com/feed?cat=tech',
+    'https://www.setopati.com/feed?cat=tech',
+    'https://www.onlinekhabar.com/feed?cat=science',
+    'https://www.kantipur.com/rss?cat=science',
+    'https://www.onlinekhabar.com/feed?cat=health',
+    'https://www.setopati.com/feed?cat=health',
+    'https://www.onlinekhabar.com/feed?cat=sports',
+    'https://www.ratopati.com/rss?cat=sports'
   ]);
 
   /**
