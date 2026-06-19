@@ -192,6 +192,11 @@ export class RssIngestionService {
 
         if (isCurrentAffairs) {
           // Keep content as is without truncation
+        } else {
+          // Truncate non-current-affairs articles (health, science) to a maximum of 1000 characters
+          if (content.length > 1000) {
+            content = content.substring(0, 1000) + '...';
+          }
         }
 
         // 5. Store article

@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import { db } from './db/db';
 import { logger } from './config/logger';
 import { CleanupService } from './services/cleanupService';
@@ -10,6 +11,7 @@ const app = express();
 
 // Standard Middlewares
 app.use(cors());
+app.use(compression());
 app.use(express.json());
 
 // Log incoming requests
@@ -77,10 +79,22 @@ app.get('/stats', async (req: Request, res: Response) => {
   }
 });
 
+// Caching variables for static dictionaries
+let cachedLanguages: any = null;
+let lastLanguagesFetch = 0;
+let cachedCategories: Record<string, any> = {};
+let lastCategoriesFetch: Record<string, number> = {};
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
 // 3. GET /languages
 app.get('/languages', async (req: Request, res: Response) => {
   try {
+    if (cachedLanguages && Date.now() - lastLanguagesFetch < CACHE_TTL) {
+      return sendResponse(res, 200, true, 'Languages retrieved successfully', cachedLanguages);
+    }
     const result = await db.query('SELECT id, name, code, enabled FROM languages WHERE enabled = true ORDER BY name');
+    cachedLanguages = result.rows;
+    lastLanguagesFetch = Date.now();
     sendResponse(res, 200, true, 'Languages retrieved successfully', result.rows);
   } catch (error: any) {
     logger.error({ error: error.message }, 'Failed to get languages');
@@ -93,6 +107,12 @@ app.get('/languages', async (req: Request, res: Response) => {
 app.get('/categories', async (req: Request, res: Response) => {
   try {
     const langName = req.query.language as string;
+    const cacheKey = langName || 'all';
+
+    if (cachedCategories[cacheKey] && Date.now() - (lastCategoriesFetch[cacheKey] || 0) < CACHE_TTL) {
+      return sendResponse(res, 200, true, 'Categories retrieved successfully', cachedCategories[cacheKey]);
+    }
+
     let queryText = 'SELECT c.id, c.name, c.enabled, l.name as language FROM categories c JOIN languages l ON c.language_id = l.id WHERE c.enabled = true';
     const queryParams: any[] = [];
 
@@ -103,6 +123,10 @@ app.get('/categories', async (req: Request, res: Response) => {
 
     queryText += ' ORDER BY c.name';
     const result = await db.query(queryText, queryParams);
+    
+    cachedCategories[cacheKey] = result.rows;
+    lastCategoriesFetch[cacheKey] = Date.now();
+
     sendResponse(res, 200, true, 'Categories retrieved successfully', result.rows);
   } catch (error: any) {
     logger.error({ error: error.message }, 'Failed to get categories');
@@ -134,6 +158,8 @@ app.get('/articles/latest', async (req: Request, res: Response) => {
 async function fetchArticlesHelper(req: Request, res: Response, latestOnly: boolean) {
   const language = req.query.language as string;
   const category = req.query.category as string;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
 
   let queryText = `
     SELECT 
@@ -141,7 +167,6 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
       l.name as language,
       c.name as category,
       a.title,
-      a.content,
       a.source_url,
       a.published_at,
       a.created_at,
@@ -173,7 +198,9 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
   if (latestOnly) {
     queryText += ' ORDER BY a.published_at DESC LIMIT 50';
   } else {
-    queryText += ' ORDER BY a.published_at DESC';
+    queryText += ` ORDER BY a.published_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    queryParams.push(limit);
+    queryParams.push((page - 1) * limit);
   }
 
   const result = await db.query(queryText, queryParams);
@@ -184,7 +211,6 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
     language: row.language,
     category: row.category,
     title: row.title,
-    content: row.content,
     source_url: row.source_url,
     published_date: row.published_date,
     published_time: row.published_time,
