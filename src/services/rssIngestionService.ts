@@ -396,7 +396,25 @@ export class RssIngestionService {
     'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/sociedad/salud-y-bienestar/portada',
     'https://www.muyinteresante.com/rss/?cat=salud',
     'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/deportes/portada',
-    'https://e00-marca.uecdn.es/rss/portada.xml'
+    'https://e00-marca.uecdn.es/rss/portada.xml',
+
+    // Filipino
+    'https://www.philstar.com/rss/headlines',
+    'https://www.gmanetwork.com/news/rss/news/nation/feed.xml',
+    'https://www.gmanetwork.com/news/rss/news/world/feed.xml',
+    'https://www.philstar.com/rss/world',
+    'https://www.philstar.com/rss/headlines?cat=politics',
+    'https://www.gmanetwork.com/news/rss/news/nation/feed.xml?cat=politics',
+    'https://www.philstar.com/rss/business',
+    'https://www.gmanetwork.com/news/rss/money/feed.xml',
+    'https://www.gmanetwork.com/news/rss/scitech/feed.xml',
+    'https://www.philstar.com/rss/technology',
+    'https://www.gmanetwork.com/news/rss/scitech/feed.xml?cat=science',
+    'https://www.philstar.com/rss/technology?cat=science',
+    'https://www.gmanetwork.com/news/rss/lifestyle/healthandwellness/feed.xml',
+    'https://www.philstar.com/rss/lifestyle?cat=health',
+    'https://www.gmanetwork.com/news/rss/sports/feed.xml',
+    'https://www.philstar.com/rss/sports'
   ]);
 
   /**
