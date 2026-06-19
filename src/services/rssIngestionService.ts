@@ -376,7 +376,27 @@ export class RssIngestionService {
     'https://www.lemonde.fr/sante/rss_full.xml',
     'https://www.france24.com/fr/sciences-technologies/rss?cat=health',
     'https://www.lequipe.fr/rss/actu_rss.xml',
-    'https://www.france24.com/fr/sports/rss'
+    'https://www.france24.com/fr/sports/rss',
+
+    // Spanish
+    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada',
+    'https://e00-elmundo.uecdn.es/elmundo/rss/portada.xml',
+    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/internacional/portada',
+    'https://www.france24.com/es/rss',
+    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/america/portada',
+    'https://www.bbc.com/mundo/index.xml',
+    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/espana/politica/portada',
+    'https://e00-elmundo.uecdn.es/elmundo/rss/espana.xml',
+    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada',
+    'https://www.eleconomista.es/rss/rss-empresas.php',
+    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/tecnologia/portada',
+    'https://www.xataka.com/feedburner.xml',
+    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/ciencia/portada',
+    'https://www.muyinteresante.com/rss/',
+    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/sociedad/salud-y-bienestar/portada',
+    'https://www.muyinteresante.com/rss/?cat=salud',
+    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/deportes/portada',
+    'https://e00-marca.uecdn.es/rss/portada.xml'
   ]);
 
   /**
