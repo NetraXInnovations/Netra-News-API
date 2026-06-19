@@ -2,8 +2,15 @@ import Parser from 'rss-parser';
 import { db } from '../db/db';
 import { ReadabilityService } from './readabilityService';
 import { logger } from '../config/logger';
+import axios from 'axios';
 
-const parser = new Parser();
+const parser = new Parser({
+  timeout: 15000,
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+  }
+});
 
 export class RssIngestionService {
   /**
@@ -120,12 +127,32 @@ export class RssIngestionService {
 
     try {
       // 2. Fetch and parse the feed
-      const feed = await parser.parseURL(rssUrl);
+      let feed: any;
+      try {
+        const response = await axios.get(rssUrl, {
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Upgrade-Insecure-Requests': '1'
+          }
+        });
+        feed = await parser.parseString(response.data);
+      } catch (axiosError: any) {
+        logger.warn({ sourceName, rssUrl, error: axiosError.message }, 'Axios fetch failed, falling back to direct parser');
+        feed = await parser.parseURL(rssUrl);
+      }
       const items = feed.items || [];
       articlesFound = items.length;
 
       // Process up to 3 articles concurrently in a sliding window
-      await this.runWithConcurrency(items, 3, async (item) => {
+      await this.runWithConcurrency(items, 3, async (item: any) => {
         const link = item.link || item.guid;
         if (!link) return;
 
@@ -141,42 +168,30 @@ export class RssIngestionService {
         }
 
         // 4. Extract and clean full article content
-        const extracted = await ReadabilityService.extract(link);
-        if (!extracted || !extracted.content) {
-          logger.warn({ link }, 'Skipping article due to empty or failed content extraction');
-          return;
+        let extracted: any = null;
+        try {
+          extracted = await ReadabilityService.extract(link);
+        } catch (err) {
+          logger.warn({ link }, 'Readability extraction failed, falling back to RSS item content');
         }
-
-        let content = extracted.content;
-        let readingTime = extracted.readingTime;
-        const title = extracted.title || item.title || 'Untitled';
+        
+        let content = '';
+        if (extracted && extracted.content && extracted.content.trim().length > 100) {
+          content = extracted.content;
+        } else {
+          content = item.content || item.contentSnippet || item.summary || 'No content available';
+        }
+        
+        content = content.trim() || 'No content available';
+        let readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\s+/).length / 200));
+        const title = extracted?.title || item.title || 'Untitled';
         const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
 
         // Check if this feed belongs to current affairs list
         const isCurrentAffairs = RssIngestionService.CURRENT_AFFAIRS_FEEDS.has(rssUrl);
 
         if (isCurrentAffairs) {
-          // Paragraph Limiter: split content by newlines, keep only 1 to 3 paragraphs max
-          const paragraphs = content
-            .split(/\n+/)
-            .map(p => p.trim())
-            .filter(p => p.length > 0);
-          
-          const limitedParagraphs = paragraphs.slice(0, 3);
-          content = limitedParagraphs.join('\n\n');
-
-          // Content length check: Minimum 300, Maximum 2500
-          if (content.length < 300) {
-            logger.warn({ link, length: content.length }, 'Skipping Current Affairs article: Content too short');
-            return;
-          }
-          if (content.length > 2500) {
-            content = content.substring(0, 2500).trim();
-          }
-
-          // Re-calculate reading time for limited content
-          const wordCount = content.trim().split(/\s+/).filter(w => w.length > 0).length;
-          readingTime = Math.max(1, Math.round(wordCount / 200));
+          // Keep content as is without truncation
         }
 
         // 5. Store article

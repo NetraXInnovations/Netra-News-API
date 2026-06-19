@@ -21,24 +21,30 @@ export const db = {
       
       // Substitute placeholders ($1, $2, etc.) safely in the SQL string
       if (params && params.length > 0) {
-        params.forEach((val, idx) => {
-          const placeholder = `$${idx + 1}`;
-          let formattedVal: string;
-          
-          if (val === null || val === undefined) {
-            formattedVal = 'NULL';
-          } else if (typeof val === 'string') {
-            formattedVal = `'${val.replace(/'/g, "''")}'`;
-          } else if (val instanceof Date) {
-            formattedVal = `'${val.toISOString()}'`;
-          } else if (typeof val === 'object') {
-            formattedVal = `'${JSON.stringify(val).replace(/'/g, "''")}'::jsonb`;
-          } else {
-            formattedVal = String(val);
+        sql = sql.replace(/\$(\d+)/g, (match, digits) => {
+          const idx = parseInt(digits, 10) - 1;
+          if (idx >= 0 && idx < params.length) {
+            const val = params[idx];
+            if (val === null || val === undefined) {
+              return 'NULL';
+            } else if (typeof val === 'string') {
+              return `'${val.replace(/'/g, "''")}'`;
+            } else if (val instanceof Date) {
+              return `'${val.toISOString()}'`;
+            } else if (typeof val === 'object') {
+              return `'${JSON.stringify(val).replace(/'/g, "''")}'::jsonb`;
+            } else {
+              return String(val);
+            }
           }
-          
-          sql = sql.split(placeholder).join(formattedVal);
+          return match;
         });
+      }
+
+      // Auto-append RETURNING * for DML statements so exec_sql doesn't crash
+      const upperSql = sql.trim().toUpperCase();
+      if ((upperSql.startsWith('INSERT') || upperSql.startsWith('UPDATE') || upperSql.startsWith('DELETE')) && !upperSql.includes('RETURNING')) {
+        sql += ' RETURNING *';
       }
 
       // Execute SQL via the exec_sql RPC helper over IPv4 HTTPS (Port 443)
