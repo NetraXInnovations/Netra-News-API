@@ -251,7 +251,27 @@ export class RssIngestionService {
     'https://malayalam.oneindia.com/rss/feeds/malayalam-lifestyle-fb.xml?cat=health',
     'https://www.onmanorama.com/lifestyle/health.rss',
     'https://malayalam.oneindia.com/rss/feeds/malayalam-sports-fb.xml',
-    'https://www.onmanorama.com/sports.rss'
+    'https://www.onmanorama.com/sports.rss',
+
+    // Marathi
+    'https://marathi.oneindia.com/rss/feeds/marathi-news-fb.xml?cat=maharashtra',
+    'https://www.lokmat.com/rss/maharashtra.xml',
+    'https://marathi.oneindia.com/rss/feeds/marathi-news-fb.xml?cat=india',
+    'https://www.lokmat.com/rss/national.xml',
+    'https://marathi.oneindia.com/rss/feeds/marathi-news-world-fb.xml',
+    'https://www.lokmat.com/rss/international.xml',
+    'https://www.lokmat.com/rss/politics.xml',
+    'https://marathi.oneindia.com/rss/feeds/marathi-news-fb.xml?cat=politics',
+    'https://www.lokmat.com/rss/business.xml',
+    'https://marathi.oneindia.com/rss/feeds/marathi-news-fb.xml?cat=business',
+    'https://marathi.oneindia.com/rss/feeds/artificial-intelligence-fb.xml',
+    'https://marathi.oneindia.com/rss/feeds/marathi-gadgets-fb.xml',
+    'https://marathi.oneindia.com/rss/feeds/artificial-intelligence-fb.xml?cat=science',
+    'https://marathi.oneindia.com/rss/feeds/marathi-gadgets-fb.xml?cat=science',
+    'https://marathi.oneindia.com/rss/feeds/marathi-lifestyle-fb.xml?cat=health',
+    'https://www.lokmat.com/rss/health.xml',
+    'https://marathi.oneindia.com/rss/feeds/marathi-sports-fb.xml',
+    'https://www.lokmat.com/rss/sports.xml'
   ]);
 
   /**
