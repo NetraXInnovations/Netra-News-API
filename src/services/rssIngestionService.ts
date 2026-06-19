@@ -40,6 +40,70 @@ export class RssIngestionService {
     await Promise.all(workers);
   }
 
+  private static cleanAndBuildParagraphs(rawText: string): string {
+    if (!rawText) return 'No content available';
+
+    // STEP 1: Clean article text
+    const skipKeywords = [
+      "ALSO READ", "READ MORE", "ADVERTISEMENT", "Download App", "Disclaimer",
+      "Promotional Text", "TargetReturnStopLoss", "Author Promotion", "Related Articles",
+      "Sponsored Content", "Download TOI App", "Build Your Legacy",
+      "Stock market recommendations"
+    ];
+
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    const validLines = lines.filter(line => {
+      if (skipKeywords.some(kw => line.toLowerCase().includes(kw.toLowerCase()))) return false;
+      return true;
+    });
+
+    // STEP 2: Sentence Detection
+    const text = validLines.join(' ');
+    // Split by . ! ? followed by space and uppercase letter, or end of string.
+    const sentenceRegex = /[^.!?]+[.!?]+/g;
+    let sentences = text.match(sentenceRegex)?.map(s => s.trim()) || [text];
+    if (sentences.length === 1 && sentences[0] === text && !text.match(/[.!?]$/)) {
+        // Fallback if no punctuation matches
+        sentences = [text];
+    } else {
+        sentences = sentences.filter(s => s.length > 0);
+    }
+
+    // STEP 3: Paragraph Builder
+    const paragraphs: string[] = [];
+    let currentSentences: string[] = [];
+    let currentLen = 0;
+
+    for (const sentence of sentences) {
+      if (!sentence) continue;
+      
+      const potentialLen = currentLen + (currentSentences.length > 0 ? 1 : 0) + sentence.length;
+      
+      if (currentSentences.length >= 4 || potentialLen > 350) {
+        if (currentSentences.length > 0) {
+          paragraphs.push(currentSentences.join(' '));
+        }
+        currentSentences = [sentence];
+        currentLen = sentence.length;
+      } else {
+        currentSentences.push(sentence);
+        currentLen = potentialLen;
+        if (currentLen >= 120 && currentSentences.length >= 2) {
+          paragraphs.push(currentSentences.join(' '));
+          currentSentences = [];
+          currentLen = 0;
+        }
+      }
+    }
+    
+    if (currentSentences.length > 0) {
+      paragraphs.push(currentSentences.join(' '));
+    }
+
+    // STEP 4: Content Length (3 to 6 paragraphs)
+    return paragraphs.slice(0, 6).join('\n\n');
+  }
+
   /**
    * Synchronizes all active RSS feeds in parallel batches.
    */
@@ -179,25 +243,21 @@ export class RssIngestionService {
         if (extracted && extracted.content && extracted.content.trim().length > 100) {
           content = extracted.content;
         } else {
-          content = item.content || item.contentSnippet || item.summary || 'No content available';
+          // Fallback to embedded RSS content fields. These often contain full HTML articles.
+          let fallback = item['content:encoded'] || item.content || item.description || item.summary || item.contentSnippet || 'No content available';
+          // Strip HTML tags to provide clean text to the paragraph builder
+          content = fallback.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
         }
         
         content = content.trim() || 'No content available';
+        content = this.cleanAndBuildParagraphs(content);
+        
         let readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\s+/).length / 200));
         const title = extracted?.title || item.title || 'Untitled';
         const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
 
         // Check if this feed belongs to current affairs list
         const isCurrentAffairs = RssIngestionService.CURRENT_AFFAIRS_FEEDS.has(rssUrl);
-
-        if (isCurrentAffairs) {
-          // Keep content as is without truncation
-        } else {
-          // Truncate non-current-affairs articles (health, science) to a maximum of 1000 characters
-          if (content.length > 1000) {
-            content = content.substring(0, 1000) + '...';
-          }
-        }
 
         // 5. Store article
         await db.query(
