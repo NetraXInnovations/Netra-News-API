@@ -213,7 +213,25 @@ export class RssIngestionService {
     'https://gujarati.oneindia.com/rss/feeds/gujarati-lifestyle-fb.xml?cat=health',
     'https://tv9gujarati.com/rss/health-news.xml',
     'https://gujarati.oneindia.com/rss/feeds/gujarati-sports-fb.xml',
-    'https://tv9gujarati.com/rss/sports-news.xml'
+    'https://tv9gujarati.com/rss/sports-news.xml',
+
+    // Kannada
+    'https://kannada.oneindia.com/rss/feeds/kannada-news-fb.xml',
+    'https://kannada.oneindia.com/rss/feeds/kannada-bengaluru-fb.xml',
+    'https://kannada.oneindia.com/rss/feeds/oneindia-kannada-fb.xml',
+    'https://kannada.oneindia.com/rss/feeds/kannada-news-fb.xml?cat=india',
+    'https://kannada.oneindia.com/rss/feeds/kannada-news-world-fb.xml',
+    'https://kannada.oneindia.com/rss/feeds/oneindia-kannada-fb.xml?cat=world',
+    'https://kannada.oneindia.com/rss/feeds/kannada-news-fb.xml?cat=politics',
+    'https://kannada.oneindia.com/rss/feeds/oneindia-kannada-fb.xml?cat=business',
+    'https://kannada.oneindia.com/rss/feeds/artificial-intelligence-fb.xml',
+    'https://kannada.oneindia.com/rss/feeds/kannada-gadgets-fb.xml',
+    'https://kannada.oneindia.com/rss/feeds/artificial-intelligence-fb.xml?cat=science',
+    'https://kannada.oneindia.com/rss/feeds/kannada-gadgets-fb.xml?cat=science',
+    'https://kannada.oneindia.com/rss/feeds/kannada-lifestyle-fb.xml',
+    'https://kannada.oneindia.com/rss/feeds/kannada-health-fb.xml',
+    'https://kannada.oneindia.com/rss/feeds/kannada-sports-fb.xml',
+    'https://kannada.oneindia.com/rss/feeds/kannada-news-fb.xml?cat=sports'
   ]);
 
   /**
