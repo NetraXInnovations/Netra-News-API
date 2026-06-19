@@ -306,7 +306,21 @@ export class RssIngestionService {
     'https://punjabi.oneindia.com/rss/feeds/punjabi-lifestyle-fb.xml',
     'https://www.jagbani.com/rss/health.xml',
     'https://punjabi.oneindia.com/rss/feeds/punjabi-sports-fb.xml',
-    'https://www.jagbani.com/rss/sports.xml'
+    'https://www.jagbani.com/rss/sports.xml',
+
+    // Urdu
+    'https://urdupoint.com/rss/pakistan.xml',
+    'https://www.bbc.com/urdu/index.xml',
+    'https://www.inquilab.com/rss/news.xml',
+    'https://urdupoint.com/rss/world.xml',
+    'https://urdupoint.com/rss/business.xml',
+    'https://www.inquilab.com/rss/business.xml',
+    'https://urdupoint.com/rss/technology.xml',
+    'https://urdupoint.com/rss/science.xml',
+    'https://urdupoint.com/rss/health.xml',
+    'https://urdupoint.com/rss/lifestyle.xml',
+    'https://urdupoint.com/rss/sports.xml',
+    'https://www.inquilab.com/rss/sports.xml'
   ]);
 
   /**
