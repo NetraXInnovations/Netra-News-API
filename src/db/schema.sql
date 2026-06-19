@@ -74,7 +74,8 @@ CREATE TABLE IF NOT EXISTS articles (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   reading_time INTEGER NOT NULL DEFAULT 0,
   is_saved BOOLEAN NOT NULL DEFAULT false,
-  is_active BOOLEAN NOT NULL DEFAULT true
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  is_current_affairs BOOLEAN NOT NULL DEFAULT false
 );
 
 -- 5. SAVED ARTICLES TABLE
@@ -114,3 +115,4 @@ CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at DE
 CREATE INDEX IF NOT EXISTS idx_saved_articles_article_id ON saved_articles(article_id);
 CREATE INDEX IF NOT EXISTS idx_sync_logs_rss_source ON sync_logs(rss_source_id);
 CREATE INDEX IF NOT EXISTS idx_system_logs_action ON system_logs(action);
+CREATE INDEX IF NOT EXISTS idx_articles_current_affairs ON articles(is_current_affairs) WHERE is_current_affairs = true;

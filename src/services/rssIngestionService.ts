@@ -59,6 +59,54 @@ export class RssIngestionService {
     }
   }
 
+  private static readonly CURRENT_AFFAIRS_FEEDS = new Set([
+    // English
+    'https://www.thehindu.com/news/national/feeder/default.rss',
+    'https://www.thehindu.com/news/international/feeder/default.rss',
+    'https://www.news18.com/commonfeeds/v1/eng/rss/politics.xml',
+    'https://timesofindia.indiatimes.com/rssfeeds/1898055.cms',
+    'https://frontline.thehindu.com/economy/feeder/default.rss',
+    'https://timesofindia.indiatimes.com/rssfeeds/66949542.cms',
+    'https://timesofindia.indiatimes.com/rssfeeds/-2128672765.cms',
+    'https://timesofindia.indiatimes.com/rssfeeds/913168846.cms',
+    'https://www.indiatoday.in/rss/1206550',
+    'https://timesofindia.indiatimes.com/rssfeeds/54829575.cms',
+
+    // Telugu
+    'https://telugu.news18.com/commonfeeds/v1/tel/rss/national.xml',
+    'https://telugu.news18.com/commonfeeds/v1/tel/rss/international.xml',
+    'https://telugu.news18.com/commonfeeds/v1/tel/rss/national/politics-national.xml',
+    'https://telugu.news18.com/commonfeeds/v1/tel/rss/business.xml',
+    'https://telugu.news18.com/commonfeeds/v1/tel/rss/technology.xml',
+    'https://telugu.news18.com/commonfeeds/v1/tel/rss/science.xml',
+    'https://telugu.news18.com/commonfeeds/v1/tel/rss/life-style/health.xml',
+    'https://telugu.news18.com/commonfeeds/v1/tel/rss/sports.xml',
+    'https://telugu.news18.com/commonfeeds/v1/tel/rss/cricket.xml',
+
+    // Hindi
+    'https://www.bhaskar.com/rss-v1--category-1061.xml',
+    'https://www.bhaskar.com/rss-v1--category-1125.xml',
+    'https://hindi.news18.com/commonfeeds/v1/hin/rss/states.xml',
+    'https://www.bhaskar.com/rss-v1--category-1051.xml',
+    'https://www.bhaskar.com/rss-v1--category-5707.xml',
+    'https://hindi.gadgets360.com/rss/science/news',
+    'https://www.indiatv.in/rssnews/topstory-education.xml',
+    'https://hindi.news18.com/commonfeeds/v1/hin/rss/lifestyle/health.xml',
+    'https://www.bhaskar.com/rss-v1--category-1053.xml',
+    'https://hindi.news18.com/commonfeeds/v1/hin/rss/sports/cricket.xml',
+
+    // Tamil
+    'https://www.vikatan.com/api/v1/collections/india-news.rss',
+    'https://www.vikatan.com/api/v1/collections/international.rss',
+    'https://tamil.news18.com/commonfeeds/v1/tam/rss/education.xml',
+    'https://www.vikatan.com/stories.rss?section-id=8968',
+    'https://tamil.news18.com/commonfeeds/v1/tam/rss/business.xml',
+    'https://www.vikatan.com/stories.rss?section-id=8965',
+    'https://www.vikatan.com/stories.rss?section-id=8963',
+    'https://tamil.news18.com/commonfeeds/v1/tam/rss/sports.xml',
+    'https://tamil.news18.com/commonfeeds/v1/tam/rss/sports/cricket.xml'
+  ]);
+
   /**
    * Syncs a single RSS source feed.
    */
@@ -99,21 +147,51 @@ export class RssIngestionService {
           return;
         }
 
+        let content = extracted.content;
+        let readingTime = extracted.readingTime;
         const title = extracted.title || item.title || 'Untitled';
         const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
 
+        // Check if this feed belongs to current affairs list
+        const isCurrentAffairs = RssIngestionService.CURRENT_AFFAIRS_FEEDS.has(rssUrl);
+
+        if (isCurrentAffairs) {
+          // Paragraph Limiter: split content by newlines, keep only 1 to 3 paragraphs max
+          const paragraphs = content
+            .split(/\n+/)
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
+          
+          const limitedParagraphs = paragraphs.slice(0, 3);
+          content = limitedParagraphs.join('\n\n');
+
+          // Content length check: Minimum 300, Maximum 2500
+          if (content.length < 300) {
+            logger.warn({ link, length: content.length }, 'Skipping Current Affairs article: Content too short');
+            return;
+          }
+          if (content.length > 2500) {
+            content = content.substring(0, 2500).trim();
+          }
+
+          // Re-calculate reading time for limited content
+          const wordCount = content.trim().split(/\s+/).filter(w => w.length > 0).length;
+          readingTime = Math.max(1, Math.round(wordCount / 200));
+        }
+
         // 5. Store article
         await db.query(
-          `INSERT INTO articles (language_id, category_id, title, content, source_url, published_at, reading_time)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          `INSERT INTO articles (language_id, category_id, title, content, source_url, published_at, reading_time, is_current_affairs)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             languageId,
             categoryId,
             title,
-            extracted.content,
+            content,
             link,
             publishedAt,
-            extracted.readingTime
+            readingTime,
+            isCurrentAffairs
           ]
         );
 

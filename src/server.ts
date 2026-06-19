@@ -2,12 +2,19 @@ import app from './app';
 import { logger } from './config/logger';
 import { RssIngestionService } from './services/rssIngestionService';
 import { CleanupService } from './services/cleanupService';
+import { db } from './db/db';
 
 const PORT = process.env.PORT || 3000;
 
 const server = app.listen(PORT, () => {
   logger.info(`Netra News Hub API server started on port ${PORT}`);
   
+  // 0. Run schema migration to guarantee is_current_affairs exists
+  db.query('ALTER TABLE articles ADD COLUMN IF NOT EXISTS is_current_affairs BOOLEAN NOT NULL DEFAULT false')
+    .then(() => db.query('CREATE INDEX IF NOT EXISTS idx_articles_current_affairs ON articles(is_current_affairs) WHERE is_current_affairs = true'))
+    .then(() => logger.info('Database schema migration for is_current_affairs column succeeded.'))
+    .catch(err => logger.error(err, 'Failed to run migration query for is_current_affairs column'));
+
   // 1. Run initial RSS sync immediately on startup
   logger.info('Triggering initial RSS sync on startup...');
   RssIngestionService.syncAllFeeds()

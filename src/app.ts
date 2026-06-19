@@ -49,7 +49,8 @@ app.get('/', (req: Request, res: Response) => {
       articles_latest: '/articles/latest',
       article_detail: '/article/:id',
       saved_articles: '/saved',
-      save_article: '/save'
+      save_article: '/save',
+      current_affairs: '/current-affairs'
     }
   });
 });
@@ -287,6 +288,48 @@ app.get('/saved', async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error({ error: error.message }, 'Failed to fetch saved articles');
     sendResponse(res, 500, false, 'Failed to fetch saved articles');
+  }
+});
+
+// 7.5 GET /current-affairs
+app.get('/current-affairs', async (req: Request, res: Response) => {
+  try {
+    const language = req.query.language as string;
+    
+    let queryText = `
+      SELECT 
+        a.id,
+        a.title,
+        to_char(a.published_at, 'YYYY-MM-DD') as published_date,
+        to_char(a.published_at, 'HH12:MI AM') as published_time,
+        a.content
+      FROM articles a
+      JOIN languages l ON a.language_id = l.id
+      WHERE a.is_active = true AND a.is_current_affairs = true
+    `;
+    const queryParams: any[] = [];
+    
+    if (language) {
+      queryText += ' AND LOWER(l.name) = LOWER($1)';
+      queryParams.push(language);
+    }
+    
+    queryText += ' ORDER BY a.published_at DESC LIMIT 50';
+    
+    const result = await db.query(queryText, queryParams);
+    
+    const formatted = result.rows.map(row => ({
+      id: row.id,
+      title: row.title,
+      date: row.published_date,
+      time: row.published_time,
+      content: row.content.split('\n\n').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
+    }));
+    
+    sendResponse(res, 200, true, 'Current affairs retrieved successfully', formatted);
+  } catch (error: any) {
+    logger.error({ error: error.message }, 'Failed to fetch current affairs');
+    sendResponse(res, 500, false, 'Failed to fetch current affairs');
   }
 });
 
