@@ -59,10 +59,10 @@ export class RssIngestionService {
 
     // STEP 2: Sentence Detection
     const text = validLines.join(' ');
-    // Split by . ! ? followed by space and uppercase letter, or end of string.
-    const sentenceRegex = /[^.!?]+[.!?]+/g;
+    // Split by . ! ? ؟ (Arabic) ۔ (Urdu) । (Devanagari) ॥ followed by space and uppercase letter, or end of string.
+    const sentenceRegex = /[^.!?؟۔।॥]+[.!?؟۔।॥]+/g;
     let sentences = text.match(sentenceRegex)?.map(s => s.trim()) || [text];
-    if (sentences.length === 1 && sentences[0] === text && !text.match(/[.!?]$/)) {
+    if (sentences.length === 1 && sentences[0] === text && !text.match(/[.!?؟۔।॥]$/)) {
         // Fallback if no punctuation matches
         sentences = [text];
     } else {
