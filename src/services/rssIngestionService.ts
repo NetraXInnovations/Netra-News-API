@@ -193,7 +193,27 @@ export class RssIngestionService {
     'https://bengali.oneindia.com/rss/feeds/bengali-lifestyle-fb.xml',
     'https://www.anandabazar.com/rss/lifestyle.xml',
     'https://bengali.oneindia.com/rss/feeds/bengali-sports-fb.xml',
-    'https://www.anandabazar.com/rss/sports.xml'
+    'https://www.anandabazar.com/rss/sports.xml',
+
+    // Gujarati
+    'https://gujarati.oneindia.com/rss/feeds/gujarati-news-fb.xml?cat=gujarat',
+    'https://tv9gujarati.com/rss/state-news.xml',
+    'https://gujarati.oneindia.com/rss/feeds/oneindia-gujarati-fb.xml?cat=india',
+    'https://tv9gujarati.com/rss/national-news.xml',
+    'https://gujarati.oneindia.com/rss/feeds/gujarati-news-world-fb.xml',
+    'https://tv9gujarati.com/rss/world-news.xml',
+    'https://tv9gujarati.com/rss/politics-news.xml',
+    'https://gujarati.oneindia.com/rss/feeds/oneindia-gujarati-fb.xml?cat=politics',
+    'https://tv9gujarati.com/rss/business-news.xml',
+    'https://gujarati.oneindia.com/rss/feeds/gujarati-news-fb.xml?cat=business',
+    'https://gujarati.oneindia.com/rss/feeds/gujarati-gadgets-fb.xml?cat=tech',
+    'https://tv9gujarati.com/rss/technology-news.xml',
+    'https://gujarati.oneindia.com/rss/feeds/gujarati-gadgets-fb.xml?cat=science',
+    'https://tv9gujarati.com/rss/technology-news.xml?cat=science',
+    'https://gujarati.oneindia.com/rss/feeds/gujarati-lifestyle-fb.xml?cat=health',
+    'https://tv9gujarati.com/rss/health-news.xml',
+    'https://gujarati.oneindia.com/rss/feeds/gujarati-sports-fb.xml',
+    'https://tv9gujarati.com/rss/sports-news.xml'
   ]);
 
   /**
