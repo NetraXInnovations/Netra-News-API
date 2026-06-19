@@ -271,7 +271,27 @@ export class RssIngestionService {
     'https://marathi.oneindia.com/rss/feeds/marathi-lifestyle-fb.xml?cat=health',
     'https://www.lokmat.com/rss/health.xml',
     'https://marathi.oneindia.com/rss/feeds/marathi-sports-fb.xml',
-    'https://www.lokmat.com/rss/sports.xml'
+    'https://www.lokmat.com/rss/sports.xml',
+
+    // Odia
+    'https://odia.oneindia.com/rss/feeds/odia-news-fb.xml',
+    'https://sambad.in/feed',
+    'https://odia.oneindia.com/rss/feeds/odia-news-fb.xml?cat=india',
+    'https://sambad.in/india-and-beyond/feed',
+    'https://odia.oneindia.com/rss/feeds/odia-news-world-fb.xml',
+    'https://sambad.in/international/feed',
+    'https://sambad.in/politics/feed',
+    'https://odia.oneindia.com/rss/feeds/odia-news-fb.xml?cat=politics',
+    'https://sambad.in/business/feed',
+    'https://odia.oneindia.com/rss/feeds/odia-news-fb.xml?cat=business',
+    'https://odia.oneindia.com/rss/feeds/artificial-intelligence-fb.xml',
+    'https://sambad.in/technology/feed',
+    'https://sambad.in/science/feed',
+    'https://odia.oneindia.com/rss/feeds/artificial-intelligence-fb.xml?cat=science',
+    'https://sambad.in/lifestyle/health/feed',
+    'https://odia.oneindia.com/rss/feeds/odia-lifestyle-fb.xml?cat=health',
+    'https://sambad.in/sports/feed',
+    'https://odia.oneindia.com/rss/feeds/odia-sports-fb.xml'
   ]);
 
   /**
