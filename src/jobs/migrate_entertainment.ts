@@ -17,6 +17,13 @@ const ENTERTAINMENT_FEEDS = [
   { url: 'https://tamil.news18.com/commonfeeds/v1/tam/rss/entertainment.xml', lang: 'Tamil', source: 'News18 Tamil Entertainment' }
 ];
 
+const CATEGORY_NAMES: Record<string, string> = {
+  English: 'Entertainment',
+  Telugu: 'వినోదం',
+  Tamil: 'பொழுதுபோக்கு',
+  Hindi: 'मनोरंजन'
+};
+
 async function run() {
   try {
     for (const feed of ENTERTAINMENT_FEEDS) {
@@ -29,12 +36,13 @@ async function run() {
       const langId = langRes.rows[0].id;
 
       // Get category ID (Create if not exists)
-      let catRes = await db.query('SELECT id FROM categories WHERE LOWER(name) = $1 AND language_id = $2', ['entertainment', langId]);
+      const catName = CATEGORY_NAMES[feed.lang] || 'Entertainment';
+      let catRes = await db.query('SELECT id FROM categories WHERE LOWER(name) = LOWER($1) AND language_id = $2', [catName, langId]);
       let catId;
       if (catRes.rowCount === 0) {
-        const catInsert = await db.query('INSERT INTO categories (name, language_id, enabled) VALUES ($1, $2, true) RETURNING id', ['Entertainment', langId]);
+        const catInsert = await db.query('INSERT INTO categories (name, language_id, enabled) VALUES ($1, $2, true) RETURNING id', [catName, langId]);
         catId = catInsert.rows[0].id;
-        logger.info(`Created Entertainment category for ${feed.lang}`);
+        logger.info(`Created ${catName} category for ${feed.lang}`);
       } else {
         catId = catRes.rows[0].id;
       }
