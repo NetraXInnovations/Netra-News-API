@@ -340,7 +340,23 @@ export class RssIngestionService {
     'https://www.onlinekhabar.com/feed?cat=health',
     'https://www.setopati.com/feed?cat=health',
     'https://www.onlinekhabar.com/feed?cat=sports',
-    'https://www.ratopati.com/rss?cat=sports'
+    'https://www.ratopati.com/rss?cat=sports',
+
+    // Arabic
+    'https://www.aljazeera.net/aljazeerarss/ar/news.xml',
+    'https://feeds.bbci.co.uk/arabic/rss.xml',
+    'https://www.aljazeera.net/aljazeerarss/ar/news.xml?cat=middleeast',
+    'https://arabic.cnn.com/rss',
+    'https://www.aljazeera.net/aljazeerarss/ar/ebusiness.xml',
+    'https://www.aleqt.com/rss.xml',
+    'https://feeds.bbci.co.uk/arabic/rss.xml?cat=tech',
+    'https://arabic.cnn.com/rss?cat=tech',
+    'https://feeds.bbci.co.uk/arabic/rss.xml?cat=science',
+    'https://www.aljazeera.net/aljazeerarss/ar/news.xml?cat=science',
+    'https://feeds.bbci.co.uk/arabic/rss.xml?cat=health',
+    'https://arabic.cnn.com/rss?cat=health',
+    'https://www.aljazeera.net/aljazeerarss/ar/sport.xml',
+    'https://feeds.bbci.co.uk/arabic/rss.xml?cat=sports'
   ]);
 
   /**
