@@ -48,8 +48,8 @@ export class RssIngestionService {
       const sources = sourcesRes.rows;
       logger.info({ count: sources.length }, 'Fetched active RSS sources');
 
-      // Sync up to 5 feeds concurrently
-      await this.runWithConcurrency(sources, 5, async (source) => {
+      // Sync up to 2 feeds concurrently
+      await this.runWithConcurrency(sources, 2, async (source) => {
         await this.syncFeed(source);
       });
 
@@ -76,8 +76,8 @@ export class RssIngestionService {
       const items = feed.items || [];
       articlesFound = items.length;
 
-      // Process up to 10 articles concurrently in a sliding window
-      await this.runWithConcurrency(items, 10, async (item) => {
+      // Process up to 3 articles concurrently in a sliding window
+      await this.runWithConcurrency(items, 3, async (item) => {
         const link = item.link || item.guid;
         if (!link) return;
 

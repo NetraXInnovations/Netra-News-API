@@ -19,7 +19,7 @@ export class ReadabilityService {
       logger.info({ url: sourceUrl }, 'Starting article content extraction');
 
       const response = await axios.get(sourceUrl, {
-        timeout: 10000,
+        timeout: 5000,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -38,6 +38,12 @@ export class ReadabilityService {
       
       // Remove scripts, styles, forms, elements that aren't content
       $('script, style, iframe, noscript, nav, header, footer, aside, form, svg, video, audio, button, input, textarea, select, dialog').remove();
+      
+      // Unwrap anchor tags: replace them with their text contents so actual link references are gone
+      $('a').each((_, el) => {
+        const $el = $(el);
+        $el.replaceWith($el.text());
+      });
       
       // Remove ads, social share icons, sidebars, newsletters, banners, comments, widgets
       $(
@@ -129,6 +135,14 @@ export class ReadabilityService {
         }
         return true;
       })
+      .map(line => {
+        // Strip out direct web links/URLs from text
+        return line
+          .replace(/https?:\/\/[^\s]+/gi, '')
+          .replace(/www\.[^\s]+/gi, '')
+          .trim();
+      })
+      .filter(line => line.length > 0)
       .join('\n')
       // Clean up multiple spaces, duplicate newlines
       .replace(/[ \t]+/g, ' ')
