@@ -175,7 +175,25 @@ export class RssIngestionService {
     'https://www.vikatan.com/stories.rss?section-id=8965',
     'https://www.vikatan.com/stories.rss?section-id=8963',
     'https://tamil.news18.com/commonfeeds/v1/tam/rss/sports.xml',
-    'https://tamil.news18.com/commonfeeds/v1/tam/rss/sports/cricket.xml'
+    'https://tamil.news18.com/commonfeeds/v1/tam/rss/sports/cricket.xml',
+
+    // Bengali
+    'https://bengali.oneindia.com/rss/feeds/bengali-news-fb.xml',
+    'https://www.anandabazar.com/rss/state.xml',
+    'https://bengali.oneindia.com/rss/feeds/bengali-news-fb.xml?cat=india',
+    'https://www.anandabazar.com/rss/india.xml',
+    'https://bengali.oneindia.com/rss/feeds/bengali-news-world-fb.xml',
+    'https://www.anandabazar.com/rss/international.xml',
+    'https://www.anandabazar.com/rss/politics.xml',
+    'https://bengali.oneindia.com/rss/feeds/bengali-news-fb.xml?cat=politics',
+    'https://www.anandabazar.com/rss/business.xml',
+    'https://bengali.oneindia.com/rss/feeds/bengali-news-fb.xml?cat=business',
+    'https://bengali.oneindia.com/rss/feeds/bengali-gadgets-fb.xml',
+    'https://www.anandabazar.com/rss/science.xml',
+    'https://bengali.oneindia.com/rss/feeds/bengali-lifestyle-fb.xml',
+    'https://www.anandabazar.com/rss/lifestyle.xml',
+    'https://bengali.oneindia.com/rss/feeds/bengali-sports-fb.xml',
+    'https://www.anandabazar.com/rss/sports.xml'
   ]);
 
   /**
@@ -246,7 +264,7 @@ export class RssIngestionService {
           // Fallback to embedded RSS content fields. These often contain full HTML articles.
           let fallback = item['content:encoded'] || item.content || item.description || item.summary || item.contentSnippet || 'No content available';
           // Strip HTML tags to provide clean text to the paragraph builder
-          content = fallback.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+          content = fallback.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ');
         }
         
         content = content.trim() || 'No content available';
