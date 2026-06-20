@@ -178,7 +178,7 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
     FROM articles a
     JOIN languages l ON a.language_id = l.id
     JOIN categories c ON a.category_id = c.id
-    WHERE a.is_active = true
+    WHERE a.is_active = true AND a.is_current_affairs = false
   `;
   const queryParams: any[] = [];
   let paramCount = 1;
@@ -328,7 +328,8 @@ app.get('/current-affairs', async (req: Request, res: Response) => {
         a.title,
         to_char(a.published_at, 'YYYY-MM-DD') as published_date,
         to_char(a.published_at, 'HH12:MI AM') as published_time,
-        a.content
+        a.content,
+        a.summary
       FROM articles a
       JOIN languages l ON a.language_id = l.id
       WHERE a.is_active = true AND a.is_current_affairs = true
@@ -349,7 +350,8 @@ app.get('/current-affairs', async (req: Request, res: Response) => {
       title: row.title,
       date: row.published_date,
       time: row.published_time,
-      content: row.content.split('\n\n').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
+      content: row.content.split('\n\n').map((p: string) => p.trim()).filter((p: string) => p.length > 0),
+      summary: row.summary || ''
     }));
     
     sendResponse(res, 200, true, 'Current affairs retrieved successfully', formatted);
