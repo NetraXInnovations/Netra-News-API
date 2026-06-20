@@ -367,6 +367,7 @@ INSERT INTO rss_sources (language_id, category_id, source_name, rss_url, enabled
 (1, 14, 'Times of India - Lifestyle', 'https://timesofindia.indiatimes.com/rssfeeds/2886704.cms', true, 1),
 (1, 15, 'NDTV News - People', 'https://feeds.feedburner.com/ndtvnews-people', true, 1),
 (1, 16, 'Frontline - Arts & Culture', 'https://frontline.thehindu.com/arts-and-culture/feeder/default.rss', true, 1),
+(1, 1, 'AffairsCloud - Current Affairs', 'https://affairscloud.com/feed/', true, 1),
 
 -- Hindi RSS Feeds
 (2, 17, 'Dainik Bhaskar - India', 'https://www.bhaskar.com/rss-v1--category-1061.xml', true, 1),

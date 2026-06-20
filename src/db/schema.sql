@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS articles (
   reading_time INTEGER NOT NULL DEFAULT 0,
   is_saved BOOLEAN NOT NULL DEFAULT false,
   is_active BOOLEAN NOT NULL DEFAULT true,
-  is_current_affairs BOOLEAN NOT NULL DEFAULT false
+  is_current_affairs BOOLEAN NOT NULL DEFAULT false,
+  summary TEXT
 );
 
 -- 5. SAVED ARTICLES TABLE

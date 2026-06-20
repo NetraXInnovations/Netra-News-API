@@ -130,292 +130,7 @@ export class RssIngestionService {
     }
   }
 
-  private static readonly CURRENT_AFFAIRS_FEEDS = new Set([
-    // English
-    'https://www.thehindu.com/news/national/feeder/default.rss',
-    'https://www.thehindu.com/news/international/feeder/default.rss',
-    'https://www.news18.com/commonfeeds/v1/eng/rss/politics.xml',
-    'https://timesofindia.indiatimes.com/rssfeeds/1898055.cms',
-    'https://frontline.thehindu.com/economy/feeder/default.rss',
-    'https://timesofindia.indiatimes.com/rssfeeds/66949542.cms',
-    'https://timesofindia.indiatimes.com/rssfeeds/-2128672765.cms',
-    'https://timesofindia.indiatimes.com/rssfeeds/913168846.cms',
-    'https://www.indiatoday.in/rss/1206550',
-    'https://timesofindia.indiatimes.com/rssfeeds/54829575.cms',
-
-    // Telugu
-    'https://telugu.news18.com/commonfeeds/v1/tel/rss/national.xml',
-    'https://telugu.news18.com/commonfeeds/v1/tel/rss/international.xml',
-    'https://telugu.news18.com/commonfeeds/v1/tel/rss/national/politics-national.xml',
-    'https://telugu.news18.com/commonfeeds/v1/tel/rss/business.xml',
-    'https://telugu.news18.com/commonfeeds/v1/tel/rss/technology.xml',
-    'https://telugu.news18.com/commonfeeds/v1/tel/rss/science.xml',
-    'https://telugu.news18.com/commonfeeds/v1/tel/rss/life-style/health.xml',
-    'https://telugu.news18.com/commonfeeds/v1/tel/rss/sports.xml',
-    'https://telugu.news18.com/commonfeeds/v1/tel/rss/cricket.xml',
-
-    // Hindi
-    'https://www.bhaskar.com/rss-v1--category-1061.xml',
-    'https://www.bhaskar.com/rss-v1--category-1125.xml',
-    'https://hindi.news18.com/commonfeeds/v1/hin/rss/states.xml',
-    'https://www.bhaskar.com/rss-v1--category-1051.xml',
-    'https://www.bhaskar.com/rss-v1--category-5707.xml',
-    'https://hindi.gadgets360.com/rss/science/news',
-    'https://www.indiatv.in/rssnews/topstory-education.xml',
-    'https://hindi.news18.com/commonfeeds/v1/hin/rss/lifestyle/health.xml',
-    'https://www.bhaskar.com/rss-v1--category-1053.xml',
-    'https://hindi.news18.com/commonfeeds/v1/hin/rss/sports/cricket.xml',
-
-    // Tamil
-    'https://www.vikatan.com/api/v1/collections/india-news.rss',
-    'https://www.vikatan.com/api/v1/collections/international.rss',
-    'https://tamil.news18.com/commonfeeds/v1/tam/rss/education.xml',
-    'https://www.vikatan.com/stories.rss?section-id=8968',
-    'https://tamil.news18.com/commonfeeds/v1/tam/rss/business.xml',
-    'https://www.vikatan.com/stories.rss?section-id=8965',
-    'https://www.vikatan.com/stories.rss?section-id=8963',
-    'https://tamil.news18.com/commonfeeds/v1/tam/rss/sports.xml',
-    'https://tamil.news18.com/commonfeeds/v1/tam/rss/sports/cricket.xml',
-
-    // Bengali
-    'https://bengali.oneindia.com/rss/feeds/bengali-news-fb.xml',
-    'https://www.anandabazar.com/rss/state.xml',
-    'https://bengali.oneindia.com/rss/feeds/bengali-news-fb.xml?cat=india',
-    'https://www.anandabazar.com/rss/india.xml',
-    'https://bengali.oneindia.com/rss/feeds/bengali-news-world-fb.xml',
-    'https://www.anandabazar.com/rss/international.xml',
-    'https://www.anandabazar.com/rss/politics.xml',
-    'https://bengali.oneindia.com/rss/feeds/bengali-news-fb.xml?cat=politics',
-    'https://www.anandabazar.com/rss/business.xml',
-    'https://bengali.oneindia.com/rss/feeds/bengali-news-fb.xml?cat=business',
-    'https://bengali.oneindia.com/rss/feeds/bengali-gadgets-fb.xml',
-    'https://www.anandabazar.com/rss/science.xml',
-    'https://bengali.oneindia.com/rss/feeds/bengali-lifestyle-fb.xml',
-    'https://www.anandabazar.com/rss/lifestyle.xml',
-    'https://bengali.oneindia.com/rss/feeds/bengali-sports-fb.xml',
-    'https://www.anandabazar.com/rss/sports.xml',
-
-    // Gujarati
-    'https://gujarati.oneindia.com/rss/feeds/gujarati-news-fb.xml?cat=gujarat',
-    'https://tv9gujarati.com/rss/state-news.xml',
-    'https://gujarati.oneindia.com/rss/feeds/oneindia-gujarati-fb.xml?cat=india',
-    'https://tv9gujarati.com/rss/national-news.xml',
-    'https://gujarati.oneindia.com/rss/feeds/gujarati-news-world-fb.xml',
-    'https://tv9gujarati.com/rss/world-news.xml',
-    'https://tv9gujarati.com/rss/politics-news.xml',
-    'https://gujarati.oneindia.com/rss/feeds/oneindia-gujarati-fb.xml?cat=politics',
-    'https://tv9gujarati.com/rss/business-news.xml',
-    'https://gujarati.oneindia.com/rss/feeds/gujarati-news-fb.xml?cat=business',
-    'https://gujarati.oneindia.com/rss/feeds/gujarati-gadgets-fb.xml?cat=tech',
-    'https://tv9gujarati.com/rss/technology-news.xml',
-    'https://gujarati.oneindia.com/rss/feeds/gujarati-gadgets-fb.xml?cat=science',
-    'https://tv9gujarati.com/rss/technology-news.xml?cat=science',
-    'https://gujarati.oneindia.com/rss/feeds/gujarati-lifestyle-fb.xml?cat=health',
-    'https://tv9gujarati.com/rss/health-news.xml',
-    'https://gujarati.oneindia.com/rss/feeds/gujarati-sports-fb.xml',
-    'https://tv9gujarati.com/rss/sports-news.xml',
-
-    // Kannada
-    'https://kannada.oneindia.com/rss/feeds/kannada-news-fb.xml',
-    'https://kannada.oneindia.com/rss/feeds/kannada-bengaluru-fb.xml',
-    'https://kannada.oneindia.com/rss/feeds/oneindia-kannada-fb.xml',
-    'https://kannada.oneindia.com/rss/feeds/kannada-news-fb.xml?cat=india',
-    'https://kannada.oneindia.com/rss/feeds/kannada-news-world-fb.xml',
-    'https://kannada.oneindia.com/rss/feeds/oneindia-kannada-fb.xml?cat=world',
-    'https://kannada.oneindia.com/rss/feeds/kannada-news-fb.xml?cat=politics',
-    'https://kannada.oneindia.com/rss/feeds/oneindia-kannada-fb.xml?cat=business',
-    'https://kannada.oneindia.com/rss/feeds/artificial-intelligence-fb.xml',
-    'https://kannada.oneindia.com/rss/feeds/kannada-gadgets-fb.xml',
-    'https://kannada.oneindia.com/rss/feeds/artificial-intelligence-fb.xml?cat=science',
-    'https://kannada.oneindia.com/rss/feeds/kannada-gadgets-fb.xml?cat=science',
-    'https://kannada.oneindia.com/rss/feeds/kannada-lifestyle-fb.xml',
-    'https://kannada.oneindia.com/rss/feeds/kannada-health-fb.xml',
-    'https://kannada.oneindia.com/rss/feeds/kannada-sports-fb.xml',
-    'https://kannada.oneindia.com/rss/feeds/kannada-news-fb.xml?cat=sports',
-
-    // Malayalam
-    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-fb.xml',
-    'https://www.onmanorama.com/news/kerala.rss',
-    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-fb.xml?cat=india',
-    'https://www.onmanorama.com/news/india.rss',
-    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-world-fb.xml',
-    'https://www.onmanorama.com/news/world.rss',
-    'https://www.onmanorama.com/news/india.rss?cat=politics',
-    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-fb.xml?cat=politics',
-    'https://www.onmanorama.com/business.rss',
-    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-fb.xml?cat=business',
-    'https://malayalam.oneindia.com/rss/feeds/artificial-intelligence-fb.xml',
-    'https://malayalam.oneindia.com/rss/feeds/malayalam-news-fb.xml?cat=tech',
-    'https://malayalam.oneindia.com/rss/feeds/artificial-intelligence-fb.xml?cat=science',
-    'https://www.onmanorama.com/news/world.rss?cat=science',
-    'https://malayalam.oneindia.com/rss/feeds/malayalam-lifestyle-fb.xml?cat=health',
-    'https://www.onmanorama.com/lifestyle/health.rss',
-    'https://malayalam.oneindia.com/rss/feeds/malayalam-sports-fb.xml',
-    'https://www.onmanorama.com/sports.rss',
-
-    // Marathi
-    'https://marathi.oneindia.com/rss/feeds/marathi-news-fb.xml?cat=maharashtra',
-    'https://www.lokmat.com/rss/maharashtra.xml',
-    'https://marathi.oneindia.com/rss/feeds/marathi-news-fb.xml?cat=india',
-    'https://www.lokmat.com/rss/national.xml',
-    'https://marathi.oneindia.com/rss/feeds/marathi-news-world-fb.xml',
-    'https://www.lokmat.com/rss/international.xml',
-    'https://www.lokmat.com/rss/politics.xml',
-    'https://marathi.oneindia.com/rss/feeds/marathi-news-fb.xml?cat=politics',
-    'https://www.lokmat.com/rss/business.xml',
-    'https://marathi.oneindia.com/rss/feeds/marathi-news-fb.xml?cat=business',
-    'https://marathi.oneindia.com/rss/feeds/artificial-intelligence-fb.xml',
-    'https://marathi.oneindia.com/rss/feeds/marathi-gadgets-fb.xml',
-    'https://marathi.oneindia.com/rss/feeds/artificial-intelligence-fb.xml?cat=science',
-    'https://marathi.oneindia.com/rss/feeds/marathi-gadgets-fb.xml?cat=science',
-    'https://marathi.oneindia.com/rss/feeds/marathi-lifestyle-fb.xml?cat=health',
-    'https://www.lokmat.com/rss/health.xml',
-    'https://marathi.oneindia.com/rss/feeds/marathi-sports-fb.xml',
-    'https://www.lokmat.com/rss/sports.xml',
-
-    // Odia
-    'https://odia.oneindia.com/rss/feeds/odia-news-fb.xml',
-    'https://sambad.in/feed',
-    'https://odia.oneindia.com/rss/feeds/odia-news-fb.xml?cat=india',
-    'https://sambad.in/india-and-beyond/feed',
-    'https://odia.oneindia.com/rss/feeds/odia-news-world-fb.xml',
-    'https://sambad.in/international/feed',
-    'https://sambad.in/politics/feed',
-    'https://odia.oneindia.com/rss/feeds/odia-news-fb.xml?cat=politics',
-    'https://sambad.in/business/feed',
-    'https://odia.oneindia.com/rss/feeds/odia-news-fb.xml?cat=business',
-    'https://odia.oneindia.com/rss/feeds/artificial-intelligence-fb.xml',
-    'https://sambad.in/technology/feed',
-    'https://sambad.in/science/feed',
-    'https://odia.oneindia.com/rss/feeds/artificial-intelligence-fb.xml?cat=science',
-    'https://sambad.in/lifestyle/health/feed',
-    'https://odia.oneindia.com/rss/feeds/odia-lifestyle-fb.xml?cat=health',
-    'https://sambad.in/sports/feed',
-    'https://odia.oneindia.com/rss/feeds/odia-sports-fb.xml',
-
-    // Punjabi
-    'https://punjabi.oneindia.com/rss/feeds/punjabi-news-fb.xml',
-    'https://www.punjabitribuneonline.com/feed/',
-    'https://www.jagbani.com/rss/news/national.xml',
-    'https://punjabi.oneindia.com/rss/feeds/punjabi-news-world-fb.xml',
-    'https://www.jagbani.com/rss/news/international.xml',
-    'https://www.jagbani.com/rss/news/politics.xml',
-    'https://www.jagbani.com/rss/business.xml',
-    'https://punjabi.oneindia.com/rss/feeds/artificial-intelligence-fb.xml',
-    'https://www.jagbani.com/rss/technology.xml',
-    'https://punjabi.oneindia.com/rss/feeds/punjabi-lifestyle-fb.xml',
-    'https://www.jagbani.com/rss/health.xml',
-    'https://punjabi.oneindia.com/rss/feeds/punjabi-sports-fb.xml',
-    'https://www.jagbani.com/rss/sports.xml',
-
-    // Urdu
-    'https://urdupoint.com/rss/pakistan.xml',
-    'https://www.bbc.com/urdu/index.xml',
-    'https://www.inquilab.com/rss/news.xml',
-    'https://urdupoint.com/rss/world.xml',
-    'https://urdupoint.com/rss/business.xml',
-    'https://www.inquilab.com/rss/business.xml',
-    'https://urdupoint.com/rss/technology.xml',
-    'https://urdupoint.com/rss/science.xml',
-    'https://urdupoint.com/rss/health.xml',
-    'https://urdupoint.com/rss/lifestyle.xml',
-    'https://urdupoint.com/rss/sports.xml',
-    'https://www.inquilab.com/rss/sports.xml',
-
-    // Nepali
-    'https://www.onlinekhabar.com/feed',
-    'https://www.kantipur.com/rss',
-    'https://www.onlinekhabar.com/feed?cat=india',
-    'https://www.kantipur.com/rss?cat=india',
-    'https://www.onlinekhabar.com/feed?cat=world',
-    'https://www.kantipur.com/rss?cat=world',
-    'https://www.setopati.com/feed?cat=politics',
-    'https://www.ratopati.com/rss?cat=politics',
-    'https://www.onlinekhabar.com/feed?cat=business',
-    'https://www.kantipur.com/rss?cat=business',
-    'https://www.onlinekhabar.com/feed?cat=tech',
-    'https://www.setopati.com/feed?cat=tech',
-    'https://www.onlinekhabar.com/feed?cat=science',
-    'https://www.kantipur.com/rss?cat=science',
-    'https://www.onlinekhabar.com/feed?cat=health',
-    'https://www.setopati.com/feed?cat=health',
-    'https://www.onlinekhabar.com/feed?cat=sports',
-    'https://www.ratopati.com/rss?cat=sports',
-
-    // Arabic
-    'https://www.aljazeera.net/aljazeerarss/ar/news.xml',
-    'https://feeds.bbci.co.uk/arabic/rss.xml',
-    'https://www.aljazeera.net/aljazeerarss/ar/news.xml?cat=middleeast',
-    'https://arabic.cnn.com/rss',
-    'https://www.aljazeera.net/aljazeerarss/ar/ebusiness.xml',
-    'https://www.aleqt.com/rss.xml',
-    'https://feeds.bbci.co.uk/arabic/rss.xml?cat=tech',
-    'https://arabic.cnn.com/rss?cat=tech',
-    'https://feeds.bbci.co.uk/arabic/rss.xml?cat=science',
-    'https://www.aljazeera.net/aljazeerarss/ar/news.xml?cat=science',
-    'https://feeds.bbci.co.uk/arabic/rss.xml?cat=health',
-    'https://arabic.cnn.com/rss?cat=health',
-    'https://www.aljazeera.net/aljazeerarss/ar/sport.xml',
-    'https://feeds.bbci.co.uk/arabic/rss.xml?cat=sports',
-
-    // French
-    'https://www.lemonde.fr/rss/une.xml',
-    'https://www.lefigaro.fr/rss/figaro_actualites.xml',
-    'https://www.france24.com/fr/rss',
-    'https://www.lemonde.fr/international/rss_full.xml',
-    'https://www.france24.com/fr/europe/rss',
-    'https://www.lemonde.fr/europe/rss_full.xml',
-    'https://www.lefigaro.fr/rss/figaro_politique.xml',
-    'https://www.lemonde.fr/politique/rss_full.xml',
-    'https://www.lemonde.fr/economie/rss_full.xml',
-    'https://www.lesechos.fr/rss/rss_une.xml',
-    'https://www.france24.com/fr/sciences-technologies/rss',
-    'https://www.lemonde.fr/pixels/rss_full.xml',
-    'https://www.france24.com/fr/sciences-technologies/rss?cat=science',
-    'https://www.lemonde.fr/sciences/rss_full.xml',
-    'https://www.lemonde.fr/sante/rss_full.xml',
-    'https://www.france24.com/fr/sciences-technologies/rss?cat=health',
-    'https://www.lequipe.fr/rss/actu_rss.xml',
-    'https://www.france24.com/fr/sports/rss',
-
-    // Spanish
-    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada',
-    'https://e00-elmundo.uecdn.es/elmundo/rss/portada.xml',
-    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/internacional/portada',
-    'https://www.france24.com/es/rss',
-    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/america/portada',
-    'https://www.bbc.com/mundo/index.xml',
-    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/espana/politica/portada',
-    'https://e00-elmundo.uecdn.es/elmundo/rss/espana.xml',
-    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada',
-    'https://www.eleconomista.es/rss/rss-empresas.php',
-    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/tecnologia/portada',
-    'https://www.xataka.com/feedburner.xml',
-    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/ciencia/portada',
-    'https://www.muyinteresante.com/rss/',
-    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/sociedad/salud-y-bienestar/portada',
-    'https://www.muyinteresante.com/rss/?cat=salud',
-    'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/deportes/portada',
-    'https://e00-marca.uecdn.es/rss/portada.xml',
-
-    // Filipino
-    'https://www.philstar.com/rss/headlines',
-    'https://www.gmanetwork.com/news/rss/news/nation/feed.xml',
-    'https://www.gmanetwork.com/news/rss/news/world/feed.xml',
-    'https://www.philstar.com/rss/world',
-    'https://www.philstar.com/rss/headlines?cat=politics',
-    'https://www.gmanetwork.com/news/rss/news/nation/feed.xml?cat=politics',
-    'https://www.philstar.com/rss/business',
-    'https://www.gmanetwork.com/news/rss/money/feed.xml',
-    'https://www.gmanetwork.com/news/rss/scitech/feed.xml',
-    'https://www.philstar.com/rss/technology',
-    'https://www.gmanetwork.com/news/rss/scitech/feed.xml?cat=science',
-    'https://www.philstar.com/rss/technology?cat=science',
-    'https://www.gmanetwork.com/news/rss/lifestyle/healthandwellness/feed.xml',
-    'https://www.philstar.com/rss/lifestyle?cat=health',
-    'https://www.gmanetwork.com/news/rss/sports/feed.xml',
-    'https://www.philstar.com/rss/sports'
-  ]);
+  private static readonly CURRENT_AFFAIRS_FEEDS = new Set<string>([]);
 
   /**
    * Syncs a single RSS source feed.
@@ -459,7 +174,73 @@ export class RssIngestionService {
         const link = item.link || item.guid;
         if (!link) return;
 
-        // 3. Duplicate check
+        const isAffairsCloud = link.includes('affairscloud.com');
+        const isCurrentAffairs = isAffairsCloud || RssIngestionService.CURRENT_AFFAIRS_FEEDS.has(rssUrl);
+
+        if (isAffairsCloud) {
+          // Special split logic for AffairsCloud articles
+          const splitArticles = await ReadabilityService.extractAffairsCloud(link);
+          if (splitArticles && splitArticles.length > 0) {
+            for (const splitArt of splitArticles) {
+              const duplicateRes = await db.query(
+                'SELECT 1 FROM articles WHERE source_url = $1',
+                [splitArt.sourceUrl]
+              );
+
+              if (duplicateRes.rowCount && duplicateRes.rowCount > 0) {
+                continue; // Skip duplicate sub-article
+              }
+
+              // Map Category Name to categoryId
+              let finalCategoryId = categoryId;
+              const catLower = splitArt.categoryName.toLowerCase();
+              if (catLower.includes('national') || catLower.includes('india')) {
+                finalCategoryId = 1;
+              } else if (catLower.includes('international') || catLower.includes('world')) {
+                finalCategoryId = 2;
+              } else if (catLower.includes('sports')) {
+                finalCategoryId = 4;
+              } else if (catLower.includes('science') || catLower.includes('technology') || catLower.includes('environment')) {
+                finalCategoryId = 6;
+              } else if (catLower.includes('banking') || catLower.includes('finance') || catLower.includes('business')) {
+                finalCategoryId = 7;
+              } else if (catLower.includes('economy')) {
+                finalCategoryId = 12;
+              } else if (catLower.includes('politics')) {
+                finalCategoryId = 13;
+              } else if (catLower.includes('appointment') || catLower.includes('resignation') || catLower.includes('obituar') || catLower.includes('award') || catLower.includes('people') || catLower.includes('days')) {
+                finalCategoryId = 15;
+              }
+
+              const content = splitArt.content.trim();
+              // Extract a high-quality summary (first paragraph or first 250 characters)
+              const summary = content.split('\n').filter(p => p.trim().length > 0)[0] || content;
+              let readingTime = Math.max(1, Math.round(content.split(/\s+/).length / 200));
+              const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
+
+              await db.query(
+                `INSERT INTO articles (language_id, category_id, title, content, summary, source_url, published_at, reading_time, is_current_affairs)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 ON CONFLICT (source_url) DO NOTHING`,
+                [
+                  languageId,
+                  finalCategoryId,
+                  splitArt.title,
+                  content,
+                  summary,
+                  splitArt.sourceUrl,
+                  publishedAt,
+                  readingTime,
+                  isCurrentAffairs
+                ]
+              );
+              articlesImported++;
+            }
+          }
+          return;
+        }
+
+        // 3. Duplicate check for normal articles
         const duplicateRes = await db.query(
           'SELECT 1 FROM articles WHERE source_url = $1',
           [link]
@@ -494,20 +275,19 @@ export class RssIngestionService {
         let readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\s+/).length / 200));
         const title = extracted?.title || item.title || 'Untitled';
         const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
-
-        // Check if this feed belongs to current affairs list
-        const isCurrentAffairs = RssIngestionService.CURRENT_AFFAIRS_FEEDS.has(rssUrl);
+        const summary = content.split('\n').filter(p => p.trim().length > 0)[0] || content;
 
         // 5. Store article
         await db.query(
-          `INSERT INTO articles (language_id, category_id, title, content, source_url, published_at, reading_time, is_current_affairs)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `INSERT INTO articles (language_id, category_id, title, content, summary, source_url, published_at, reading_time, is_current_affairs)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            ON CONFLICT (source_url) DO NOTHING`,
           [
             languageId,
             categoryId,
             title,
             content,
+            summary,
             link,
             publishedAt,
             readingTime,

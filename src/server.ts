@@ -9,8 +9,9 @@ const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   logger.info(`Netra News Hub API server started on port ${PORT}`);
   
-  // 0. Run schema migration to guarantee is_current_affairs exists and add required performance indexes
+  // 0. Run schema migration to guarantee is_current_affairs and summary exist and add required performance indexes
   db.query('ALTER TABLE articles ADD COLUMN IF NOT EXISTS is_current_affairs BOOLEAN NOT NULL DEFAULT false')
+    .then(() => db.query('ALTER TABLE articles ADD COLUMN IF NOT EXISTS summary TEXT'))
     .then(() => db.query('CREATE INDEX IF NOT EXISTS idx_articles_current_affairs ON articles(is_current_affairs) WHERE is_current_affairs = true'))
     .then(() => db.query('CREATE INDEX IF NOT EXISTS idx_articles_language ON articles(language_id)'))
     .then(() => db.query('CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id)'))

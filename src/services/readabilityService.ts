@@ -158,6 +158,133 @@ export class ReadabilityService {
   }
 
   /**
+   * Special extraction logic for AffairsCloud Current Affairs pages.
+   * Splits a single page with multiple news topics into separate clean articles.
+   */
+  static async extractAffairsCloud(sourceUrl: string): Promise<Array<{ title: string; content: string; categoryName: string; sourceUrl: string }> | null> {
+    try {
+      logger.info({ url: sourceUrl }, 'Starting AffairsCloud split article content extraction');
+      const response = await axios.get(sourceUrl, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        }
+      });
+
+      const html = response.data;
+      if (!html || typeof html !== 'string') return null;
+
+      const $ = cheerio.load(html);
+      const postContent = $('.td-post-content');
+      if (postContent.length === 0) return null;
+
+      const articles: Array<{ title: string; content: string; categoryName: string; sourceUrl: string }> = [];
+      let currentCategory = 'NATIONAL AFFAIRS';
+      let currentArticle: any = null;
+
+      const slugify = (text: string) => {
+        return text
+          .toString()
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^\w\-]+/g, '')
+          .replace(/\-\-+/g, '-')
+          .replace(/^-+/, '')
+          .replace(/-+$/, '');
+      };
+
+      postContent.children().each((_, el) => {
+        const $el = $(el);
+        const tagName = el.tagName.toLowerCase();
+        const text = $el.text().trim();
+        if (!text) return;
+
+        // Detect Category Header (Red text)
+        const redSpan = $el.find('span[style*="color: #ff0000"], span[style*="color: rgb(255, 0, 0)"]');
+        if (redSpan.length > 0 && redSpan.text().trim().match(/^[A-Z\s&]+$/)) {
+          currentCategory = redSpan.text().trim();
+          return;
+        }
+
+        // Detect Headline (Blue text or H2/H3 or Q1.)
+        const blueSpan = $el.find('span[style*="color: #0000ff"], span[style*="color: rgb(0, 0, 255)"]');
+        const isQuestion = text.match(/^Q\d+\./i) || text.startsWith('Current Affairs Question');
+        const isHeadline = blueSpan.length > 0 || tagName === 'h2' || tagName === 'h3' || isQuestion;
+
+        if (isHeadline) {
+          let headlineText = blueSpan.length > 0 ? blueSpan.text().trim() : text;
+          headlineText = headlineText.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+          // Validation / Filter out non-headline boilerplate
+          if (headlineText.length > 15 && 
+              !headlineText.toLowerCase().includes('click here') && 
+              !headlineText.toLowerCase().includes('current affairs') &&
+              !headlineText.toLowerCase().includes('affairscloud')
+          ) {
+            if (currentArticle && currentArticle.contentParts.length > 0) {
+              const fullContent = currentArticle.contentParts.join('\n\n');
+              articles.push({
+                title: currentArticle.title,
+                content: fullContent,
+                categoryName: currentArticle.categoryName,
+                sourceUrl: currentArticle.sourceUrl
+              });
+            }
+
+            let initialContent = '';
+            if (blueSpan.length > 0) {
+              const clonedEl = $el.clone();
+              clonedEl.find('span[style*="color: #0000ff"], span[style*="color: rgb(0, 0, 255)"]').remove();
+              initialContent = clonedEl.text().trim();
+            }
+
+            currentArticle = {
+              title: headlineText,
+              categoryName: currentCategory,
+              contentParts: initialContent ? [initialContent] : [],
+              sourceUrl: `${sourceUrl}#${slugify(headlineText)}`
+            };
+            return;
+          }
+        }
+
+        // Append content to current article
+        if (currentArticle) {
+          const lowerText = text.toLowerCase();
+          // Filter boilerplates
+          if (
+            lowerText.includes('click here for') ||
+            lowerText.includes('we are hiring') ||
+            lowerText.includes('subject matter expert') ||
+            lowerText.includes('sharing and legal compliance') ||
+            lowerText.includes('careerscloud app')
+          ) {
+            return;
+          }
+          currentArticle.contentParts.push(text);
+        }
+      });
+
+      if (currentArticle && currentArticle.contentParts.length > 0) {
+        const fullContent = currentArticle.contentParts.join('\n\n');
+        articles.push({
+          title: currentArticle.title,
+          content: fullContent,
+          categoryName: currentArticle.categoryName,
+          sourceUrl: currentArticle.sourceUrl
+        });
+      }
+
+      return articles;
+    } catch (error: any) {
+      logger.error({ url: sourceUrl, error: error.message }, 'Failed to extract AffairsCloud split content');
+      return null;
+    }
+  }
+
+  /**
    * Calculates reading time in minutes assuming 200 words per minute.
    */
   private static calculateReadingTime(text: string): number {
