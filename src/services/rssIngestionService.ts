@@ -100,8 +100,16 @@ export class RssIngestionService {
       paragraphs.push(currentSentences.join(' '));
     }
 
-    // STEP 4: Content Length (3 to 6 paragraphs)
-    return paragraphs.slice(0, 6).join('\n\n');
+    // STEP 4: Content Length (target roughly 1000 to 1500 characters)
+    let finalContent = '';
+    for (const p of paragraphs) {
+      if (finalContent.length >= 1000) {
+        break;
+      }
+      finalContent += (finalContent ? '\n\n' : '') + p;
+    }
+    
+    return finalContent || 'No content available';
   }
 
   /**
@@ -213,6 +221,12 @@ export class RssIngestionService {
               }
 
               const content = splitArt.content.trim();
+              
+              if (!content || content.length < 50) {
+                 logger.warn({ sourceUrl: splitArt.sourceUrl, title: splitArt.title }, 'Skipping sub-article due to insufficient content');
+                 continue; // Skip if no real content
+              }
+
               // Extract a high-quality summary (first paragraph or first 250 characters)
               const summary = content.split('\n').filter(p => p.trim().length > 0)[0] || content;
               let readingTime = Math.max(1, Math.round(content.split(/\s+/).length / 200));
@@ -264,13 +278,19 @@ export class RssIngestionService {
           content = extracted.content;
         } else {
           // Fallback to embedded RSS content fields. These often contain full HTML articles.
-          let fallback = item['content:encoded'] || item.content || item.description || item.summary || item.contentSnippet || 'No content available';
+          let fallback = item['content:encoded'] || item.content || item.description || item.summary || item.contentSnippet || '';
           // Strip HTML tags to provide clean text to the paragraph builder
           content = fallback.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ');
         }
         
-        content = content.trim() || 'No content available';
+        content = content.trim() || '';
         content = this.cleanAndBuildParagraphs(content);
+        
+        // Skip if there's no real content instead of saving just the title
+        if (!content || content === 'No content available' || content.length < 50) {
+          logger.warn({ link, title: item.title }, 'Skipping article due to insufficient content');
+          return;
+        }
         
         let readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\s+/).length / 200));
         const title = extracted?.title || item.title || 'Untitled';
