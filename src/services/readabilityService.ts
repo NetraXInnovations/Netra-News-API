@@ -10,6 +10,35 @@ export interface ExtractedArticle {
   readingTime: number;
 }
 
+/**
+ * Priority-ordered CSS selectors to find article body content.
+ * Tries semantic tags first, then common news site class patterns.
+ */
+const ARTICLE_BODY_SELECTORS = [
+  'article',
+  '[itemprop="articleBody"]',
+  '[class*="article-body"]',
+  '[class*="article-content"]',
+  '[class*="article-text"]',
+  '[id*="article-body"]',
+  '[id*="article-content"]',
+  '[class*="story-body"]',
+  '[class*="story-content"]',
+  '[class*="post-body"]',
+  '[class*="post-content"]',
+  '[class*="entry-content"]',
+  '[class*="content-body"]',
+  '[class*="news-body"]',
+  '[class*="news-content"]',
+  '[class*="td-post-content"]',
+  '[class*="article__body"]',
+  '[class*="article__content"]',
+  'main',
+  '[role="main"]',
+  '.content',
+  '#content'
+];
+
 export class ReadabilityService {
   /**
    * Downloads HTML content, cleans it, runs Mozilla Readability, and returns clean text content.
@@ -68,29 +97,45 @@ export class ReadabilityService {
       const parsedArticle = reader.parse();
 
       if (!parsedArticle) {
-        logger.warn({ url: sourceUrl }, 'Mozilla Readability failed to parse the document, falling back to body text');
-        
-        // Fallback: extract title and paragraph texts from cheerio
-        const title = $('title').text() || $('h1').first().text();
-        const paragraphs: string[] = [];
-        $('p').each((_, el) => {
-          const text = $(el).text().trim();
-          if (text.length > 30) {
-            paragraphs.push(text);
+        logger.warn({ url: sourceUrl }, 'Mozilla Readability failed — trying multi-selector fallback');
+
+        const title = $('title').text() || $('h1').first().text() || '';
+        let extractedText = '';
+
+        // Try each selector in priority order; use first one that yields real content
+        for (const selector of ARTICLE_BODY_SELECTORS) {
+          const el = $(selector).first();
+          if (el.length > 0) {
+            const text = el.text().trim();
+            if (text.length > 100) {
+              extractedText = text;
+              logger.info({ url: sourceUrl, selector }, 'Fallback selector matched');
+              break;
+            }
           }
-        });
-        const content = paragraphs.join('\n\n');
-        
-        if (!content) return null;
+        }
+
+        // Last resort: collect all <p> tags from anywhere in the page
+        if (!extractedText) {
+          const paragraphs: string[] = [];
+          $('p').each((_, el) => {
+            const text = $(el).text().trim();
+            if (text.length > 15) {
+              paragraphs.push(text);
+            }
+          });
+          extractedText = paragraphs.join('\n\n');
+        }
 
         const cleanTitle = this.cleanText(title);
-        const cleanContent = this.cleanText(content);
+        const cleanContent = this.cleanText(extractedText);
         const readingTime = this.calculateReadingTime(cleanContent);
 
+        // Return even if content is short — never return null just because it's brief
         return {
           title: cleanTitle,
-          content: cleanContent,
-          readingTime
+          content: cleanContent || '',
+          readingTime: Math.max(1, readingTime)
         };
       }
 

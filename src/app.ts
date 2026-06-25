@@ -179,6 +179,7 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
     JOIN languages l ON a.language_id = l.id
     JOIN categories c ON a.category_id = c.id
     WHERE a.is_active = true AND a.is_current_affairs = false
+    AND length(a.content) >= 50
   `;
   const queryParams: any[] = [];
   let paramCount = 1;
@@ -243,7 +244,7 @@ app.get('/article/:id', async (req: Request, res: Response) => {
       FROM articles a
       JOIN languages l ON a.language_id = l.id
       JOIN categories c ON a.category_id = c.id
-      WHERE a.id = $1 AND a.is_active = true
+      WHERE a.id = $1 AND a.is_active = true AND length(a.content) >= 50
     `;
     const result = await db.query(queryText, [id]);
 
@@ -333,6 +334,7 @@ app.get('/current-affairs', async (req: Request, res: Response) => {
       FROM articles a
       JOIN languages l ON a.language_id = l.id
       WHERE a.is_active = true AND a.is_current_affairs = true
+      AND length(a.content) >= 50
     `;
     const queryParams: any[] = [];
     

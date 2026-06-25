@@ -177,17 +177,19 @@ export class RssIngestionService {
       const items = feed.items || [];
       articlesFound = items.length;
 
-      // Process up to 3 articles concurrently in a sliding window
-      await this.runWithConcurrency(items, 3, async (item: any) => {
+      // Process up to 5 articles concurrently for faster ingestion
+      await this.runWithConcurrency(items, 5, async (item: any) => {
         const link = item.link || item.guid;
-        if (!link) return;
+        // Always prefer link; if missing use a generated one from title so article is never lost
+        const articleLink = link || (item.title ? `rss://no-link/${encodeURIComponent(item.title)}` : null);
+        if (!articleLink) return; // truly nothing to identify this item
 
-        const isAffairsCloud = link.includes('affairscloud.com');
+        const isAffairsCloud = articleLink.includes('affairscloud.com');
         const isCurrentAffairs = isAffairsCloud || RssIngestionService.CURRENT_AFFAIRS_FEEDS.has(rssUrl);
 
         if (isAffairsCloud) {
           // Special split logic for AffairsCloud articles
-          const splitArticles = await ReadabilityService.extractAffairsCloud(link);
+          const splitArticles = await ReadabilityService.extractAffairsCloud(articleLink);
           if (splitArticles && splitArticles.length > 0) {
             for (const splitArt of splitArticles) {
               const duplicateRes = await db.query(
@@ -220,12 +222,7 @@ export class RssIngestionService {
                 finalCategoryId = 15;
               }
 
-              const content = splitArt.content.trim();
-              
-              if (!content || content.length < 50) {
-                 logger.warn({ sourceUrl: splitArt.sourceUrl, title: splitArt.title }, 'Skipping sub-article due to insufficient content');
-                 continue; // Skip if no real content
-              }
+              const content = splitArt.content.trim() || splitArt.title || 'Content not available';
 
               // Extract a high-quality summary (first paragraph or first 250 characters)
               const summary = content.split('\n').filter(p => p.trim().length > 0)[0] || content;
@@ -254,15 +251,13 @@ export class RssIngestionService {
           return;
         }
 
-        // 3. Duplicate check for normal articles
         const duplicateRes = await db.query(
           'SELECT 1 FROM articles WHERE source_url = $1',
-          [link]
+          [articleLink]
         );
 
         if (duplicateRes.rowCount && duplicateRes.rowCount > 0) {
-          // Skip duplicate
-          return;
+          return; // Already stored — skip duplicate
         }
 
         // 4. Extract and clean full article content
@@ -275,29 +270,42 @@ export class RssIngestionService {
         
         let content = '';
         if (extracted && extracted.content && extracted.content.trim().length > 100) {
+          // Best case: Readability extracted full article text
           content = extracted.content;
         } else {
-          // Fallback to embedded RSS content fields. These often contain full HTML articles.
-          let fallback = item['content:encoded'] || item.content || item.description || item.summary || item.contentSnippet || '';
-          // Strip HTML tags to provide clean text to the paragraph builder
-          content = fallback.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ');
+          // Gather every RSS field, strip HTML, pick the longest one
+          const candidates = [
+            item['content:encoded'],
+            item.content,
+            item.description,
+            item.summary,
+            item.contentSnippet,
+            extracted?.content   // even if short, still better than nothing
+          ]
+            .filter(Boolean)
+            .map((s: string) => s.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').trim())
+            .sort((a: string, b: string) => b.length - a.length);
+
+          content = candidates[0] || '';
         }
         
-        content = content.trim() || '';
+        content = content.trim();
         content = this.cleanAndBuildParagraphs(content);
-        
-        // Skip if there's no real content instead of saving just the title
-        if (!content || content === 'No content available' || content.length < 50) {
-          logger.warn({ link, title: item.title }, 'Skipping article due to insufficient content');
+
+        // Always use RSS item.title as the authoritative title — it's the most reliable source
+        const title = item.title?.trim() || extracted?.title?.trim() || 'Untitled';
+
+        // No real content? Skip — don't save distortion/placeholder text
+        if (!content || content === 'No content available' || content.trim().length < 50) {
+          logger.warn({ link: articleLink, title }, 'Skipping — no real article text found');
           return;
         }
-        
-        let readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\s+/).length / 200));
-        const title = extracted?.title || item.title || 'Untitled';
-        const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
-        const summary = content.split('\n').filter(p => p.trim().length > 0)[0] || content;
 
-        // 5. Store article
+        const readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\s+/).length / 200));
+        const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
+        const summary = content.split('\n').filter((p: string) => p.trim().length > 0)[0] || content;
+
+        // 5. Store article — always, no skip
         await db.query(
           `INSERT INTO articles (language_id, category_id, title, content, summary, source_url, published_at, reading_time, is_current_affairs)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -308,7 +316,7 @@ export class RssIngestionService {
             title,
             content,
             summary,
-            link,
+            articleLink,
             publishedAt,
             readingTime,
             isCurrentAffairs
