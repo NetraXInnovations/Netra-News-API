@@ -100,10 +100,10 @@ export class RssIngestionService {
       paragraphs.push(currentSentences.join(' '));
     }
 
-    // STEP 4: Content Length (target roughly 1000 to 1500 characters)
+    // STEP 4: Content Length (target roughly 5000+ characters)
     let finalContent = '';
     for (const p of paragraphs) {
-      if (finalContent.length >= 1000) {
+      if (finalContent.length >= 5000) {
         break;
       }
       finalContent += (finalContent ? '\n\n' : '') + p;
