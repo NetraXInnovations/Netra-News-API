@@ -37,11 +37,11 @@ const server = app.listen(PORT, () => {
     .then(stats => logger.info(stats, 'Initial startup database cleanup completed.'))
     .catch(err => logger.error(err, 'Initial startup database cleanup failed'));
 
-  // 4. Set interval to auto-cleanup expired articles every 24 hours (24 * 60 * 60 * 1000 ms)
+  // 4. Set interval to auto-cleanup expired articles every 1 hour (1 * 60 * 60 * 1000 ms)
   const cleanupInterval = setInterval(() => {
     logger.info('Running scheduled background database cleanup...');
     CleanupService.runCleanup().catch(err => logger.error(err, 'Background database cleanup failed'));
-  }, 24 * 60 * 60 * 1000);
+  }, 1 * 60 * 60 * 1000);
 
   // Graceful shutdown handler
   const shutdown = (signal: string) => {

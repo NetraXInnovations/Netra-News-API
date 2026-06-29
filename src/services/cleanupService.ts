@@ -19,7 +19,7 @@ export class CleanupService {
    */
   static async runCleanup(): Promise<CleanupStats> {
     const startTime = new Date();
-    logger.info('Starting daily article cleanup job');
+    logger.info('Starting scheduled article cleanup job');
 
     let scannedCount = 0;
     let deletedCount = 0;
@@ -30,61 +30,62 @@ export class CleanupService {
       const totalArticlesRes = await db.query('SELECT COUNT(*)::int as count FROM articles');
       const totalBefore = totalArticlesRes.rows[0].count;
 
-      // 2. Count articles older than 3 days
+      // 2. Count articles older than 24 hours
       const scannedRes = await db.query(
         `SELECT COUNT(*)::int as count FROM articles 
-         WHERE created_at < NOW() - INTERVAL '3 days'`
+         WHERE created_at < NOW() - INTERVAL '24 hours'`
       );
       scannedCount = scannedRes.rows[0].count;
 
-      // 3. Find articles that are older than 3 days but SAVED (to keep count of retained)
+      // 3. Find articles that are older than 24 hours but SAVED (to keep count of retained)
       const savedOldRes = await db.query(
         `SELECT COUNT(*)::int as count FROM articles a
          JOIN saved_articles s ON a.id = s.article_id
-         WHERE a.created_at < NOW() - INTERVAL '3 days'`
+         WHERE a.created_at < NOW() - INTERVAL '24 hours'`
       );
       const savedOldCount = savedOldRes.rows[0].count;
 
-      // 4. Retrieve list of articles that will be deleted for logging
-      const toDeleteRes = await db.query(
-        `SELECT id, title, source_url FROM articles
-         WHERE created_at < NOW() - INTERVAL '3 days'
+      // 4. Count articles that are actually eligible for deletion
+      const toDeleteCountRes = await db.query(
+        `SELECT COUNT(*)::int as count FROM articles
+         WHERE created_at < NOW() - INTERVAL '24 hours'
            AND id NOT IN (SELECT article_id FROM saved_articles)`
       );
-      const articlesToDelete = toDeleteRes.rows;
-      deletedCount = articlesToDelete.length;
-      retainedCount = totalBefore - deletedCount;
+      const eligibleToDeleteCount = toDeleteCountRes.rows[0].count;
+      retainedCount = totalBefore - eligibleToDeleteCount;
 
-      // Log each deleted article in system_logs
-      for (const article of articlesToDelete) {
-        await db.query(
-          `INSERT INTO system_logs (log_level, action, message, metadata)
-           VALUES ($1, $2, $3, $4)`,
-          [
-            'info',
-            'article_deletion',
-            `Deleted expired article: ${article.title}`,
-            JSON.stringify({ articleId: article.id, sourceUrl: article.source_url })
-          ]
-        );
-      }
+      // 5. Run delete in batches to prevent locking and OOM issues
+      const batchSize = 1000;
+      let totalDeleted = 0;
+      let done = false;
 
-      // 5. Run delete query
-      if (deletedCount > 0) {
-        await db.query(
+      while (!done) {
+        const res = await db.query(
           `DELETE FROM articles
-           WHERE created_at < NOW() - INTERVAL '3 days'
-             AND id NOT IN (SELECT article_id FROM saved_articles)`
+           WHERE id IN (
+             SELECT id FROM articles
+             WHERE created_at < NOW() - INTERVAL '24 hours'
+               AND id NOT IN (SELECT article_id FROM saved_articles)
+             LIMIT $1
+           )
+           RETURNING id`,
+          [batchSize]
         );
+        const rowsDeleted = res.rowCount || 0;
+        totalDeleted += rowsDeleted;
+        if (rowsDeleted < batchSize) {
+          done = true;
+        }
       }
 
+      deletedCount = totalDeleted;
       const endTime = new Date();
       const stats: CleanupStats = {
         startTime,
         endTime,
         scannedCount,
         deletedCount,
-        retainedCount
+        retainedCount: totalBefore - totalDeleted
       };
 
       // 6. Log cleanup summary in system_logs
@@ -94,16 +95,16 @@ export class CleanupService {
         [
           'info',
           'cleanup_summary',
-          `Completed daily article cleanup. Deleted ${deletedCount} articles.`,
+          `Completed scheduled article cleanup. Deleted ${totalDeleted} articles.`,
           JSON.stringify(stats)
         ]
       );
 
-      logger.info(stats, 'Daily article cleanup completed successfully');
+      logger.info(stats, 'Scheduled article cleanup completed successfully');
       return stats;
 
     } catch (error: any) {
-      logger.error({ error: error.message }, 'Failed to run daily article cleanup');
+      logger.error({ error: error.message }, 'Failed to run scheduled article cleanup');
       
       // Log failure
       await db.query(
@@ -112,7 +113,7 @@ export class CleanupService {
         [
           'error',
           'cleanup_failure',
-          `Failed to run daily cleanup job: ${error.message}`,
+          `Failed to run scheduled cleanup job: ${error.message}`,
           JSON.stringify({ error: error.message, stack: error.stack })
         ]
       );
