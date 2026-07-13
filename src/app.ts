@@ -49,14 +49,7 @@ app.get('/api/v1/categories', async (req: Request, res: Response) => {
     }
     const cats = await Category.find({ language: language as string, enabled: true }).sort({ name: 1 }).lean();
     
-    // Only show englishName if the requested language is NOT English
-    res.json(cats.map(c => {
-      const result: any = { name: c.name };
-      if (language !== 'English' && c.englishName) {
-        result.englishName = c.englishName;
-      }
-      return result;
-    }));
+    res.json(cats.map(c => ({ name: c.name })));
   } catch (error) {
     logger.error(error, 'Error fetching categories');
     res.status(500).json({ error: 'Failed to fetch categories' });
