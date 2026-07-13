@@ -21,7 +21,7 @@ app.use(express.json());
 const formatArticle = (doc: any) => ({
   id: doc._id.toString(),
   title: doc.title,
-  publishedDate: `${doc.publishedDate} ${doc.publishedTime || ''}`.trim(),
+  publishedDate: doc.publishedTime ? `${doc.publishedDate}_${doc.publishedTime}` : doc.publishedDate,
   language: doc.language,
   category: doc.category,
   content: doc.content,
@@ -116,7 +116,6 @@ app.get('/api/v1/search', async (req: Request, res: Response) => {
 app.post('/api/v1/articles/:id/save', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    // Hardcoded dummy user ID for now since auth isn't implemented
     const userId = req.headers['x-user-id'] || 'anonymous-user'; 
     
     const article = await Article.findById(id);
@@ -128,7 +127,6 @@ app.post('/api/v1/articles/:id/save', async (req: Request, res: Response) => {
       { upsert: true }
     );
 
-    // Update article to prevent deletion
     article.isSaved = true;
     await article.save();
 
@@ -147,7 +145,6 @@ app.delete('/api/v1/articles/:id/save', async (req: Request, res: Response) => {
 
     await SavedArticle.deleteOne({ userId: userId as string, articleId: id });
 
-    // Check if anyone else has this article saved
     const otherSaves = await SavedArticle.countDocuments({ articleId: id });
     if (otherSaves === 0) {
       await Article.findByIdAndUpdate(id, { isSaved: false });
@@ -165,21 +162,105 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
-// Root endpoint so the browser doesn't show an error
+// Root endpoint: Beautiful HTML Welcome Board
 app.get('/', (req: Request, res: Response) => {
-  res.json({
-    status: "🟢 ONLINE",
-    welcome: "Welcome to the Netra News Hub Core Engine 🌐",
-    description: "Delivering real-time, ultra-fast, and verified news content globally.",
-    version: "1.0.0 (Production)",
-    server_time: new Date(),
-    available_endpoints: {
-      latest_articles: "/api/v1/articles",
-      categories: "/api/v1/categories?language=English",
-      supported_languages: "/api/v1/languages",
-      search_news: "/api/v1/search?q=India"
-    }
-  });
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Netra News Hub API</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap');
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: 'Outfit', sans-serif;
+          background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+        }
+        .container {
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 20px;
+          padding: 50px 40px;
+          text-align: center;
+          max-width: 600px;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+          animation: fadeIn 1s ease-out;
+        }
+        h1 {
+          font-size: 2.5rem;
+          margin-bottom: 10px;
+          background: linear-gradient(to right, #38bdf8, #818cf8);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        p {
+          font-size: 1.1rem;
+          color: #94a3b8;
+          margin-bottom: 30px;
+        }
+        .endpoint-box {
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 10px;
+          padding: 20px;
+          text-align: left;
+        }
+        .endpoint {
+          margin: 10px 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .badge {
+          background: #3b82f6;
+          color: white;
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 0.8rem;
+          font-weight: bold;
+        }
+        .url {
+          color: #38bdf8;
+          font-family: monospace;
+          font-size: 1.1rem;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Netra News Hub API</h1>
+        <p>Your ultra-fast, dynamic news backend is successfully running online.</p>
+        
+        <div class="endpoint-box">
+          <div class="endpoint">
+            <span class="badge">GET</span>
+            <span class="url">/api/v1/articles</span>
+          </div>
+          <div class="endpoint">
+            <span class="badge">GET</span>
+            <span class="url">/api/v1/categories</span>
+          </div>
+          <div class="endpoint">
+            <span class="badge">GET</span>
+            <span class="url">/api/v1/languages</span>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 export default app;
