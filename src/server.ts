@@ -17,8 +17,9 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
-    // 1. Initialize Firebase first
-    await initFirebase();
+    // 1. Initialize Firebase First
+    logger.info('Initializing Firebase...');
+    initFirebase();
     
     // 2. Start Express
     const server = app.listen(PORT, () => {

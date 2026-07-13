@@ -45,7 +45,7 @@ const defaultSources = [
 ];
 
 async function seed() {
-  await initFirebase();
+  initFirebase();
   logger.info('Seeding default RSS sources to Firestore...');
   const batch = db.batch();
   const sourcesRef = db.collection('rss_sources');
