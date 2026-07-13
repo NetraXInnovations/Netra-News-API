@@ -22,7 +22,7 @@ async function clearAllData() {
     logger.info('Database is now completely empty!');
     process.exit(0);
   } catch (error) {
-    logger.error('Failed to clear database', error);
+    logger.error(error, 'Failed to clear database');
     process.exit(1);
   }
 }

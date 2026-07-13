@@ -31,7 +31,7 @@ async function fixIndexes() {
     logger.info('Indexes rebuilt successfully! Ready for clean sync.');
     process.exit(0);
   } catch (error) {
-    logger.error('Failed to fix indexes', error);
+    logger.error(error, 'Failed to fix indexes');
     process.exit(1);
   }
 }

@@ -36,7 +36,7 @@ app.get('/api/v1/languages', async (req: Request, res: Response) => {
     const langs = await Language.find({ enabled: true }).sort({ name: 1 }).lean();
     res.json(langs.map(l => ({ name: l.name, code: l.code })));
   } catch (error) {
-    logger.error('Error fetching languages', error);
+    logger.error(error, 'Error fetching languages');
     res.status(500).json({ error: 'Failed to fetch languages' });
   }
 });
@@ -51,7 +51,7 @@ app.get('/api/v1/categories', async (req: Request, res: Response) => {
     const cats = await Category.find({ language: language as string, enabled: true }).sort({ name: 1 }).lean();
     res.json(cats.map(c => ({ name: c.name })));
   } catch (error) {
-    logger.error('Error fetching categories', error);
+    logger.error(error, 'Error fetching categories');
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
 });
@@ -75,7 +75,7 @@ app.get('/api/v1/articles', async (req: Request, res: Response) => {
 
     res.json(articles.map(formatArticle));
   } catch (error) {
-    logger.error('Error fetching articles', error);
+    logger.error(error, 'Error fetching articles');
     res.status(500).json({ error: 'Failed to fetch articles' });
   }
 });
@@ -87,7 +87,7 @@ app.get('/api/v1/articles/:articleId', async (req: Request, res: Response) => {
     if (!article) return res.status(404).json({ error: 'Article not found' });
     res.json(formatArticle(article));
   } catch (error) {
-    logger.error('Error fetching article', error);
+    logger.error(error, 'Error fetching article');
     res.status(500).json({ error: 'Failed to fetch article' });
   }
 });
@@ -108,7 +108,7 @@ app.get('/api/v1/search', async (req: Request, res: Response) => {
 
     res.json(articles.map(formatArticle));
   } catch (error) {
-    logger.error('Error searching articles', error);
+    logger.error(error, 'Error searching articles');
     res.status(500).json({ error: 'Search failed' });
   }
 });
@@ -135,7 +135,7 @@ app.post('/api/v1/articles/:id/save', async (req: Request, res: Response) => {
 
     res.json({ success: true, message: 'Article saved' });
   } catch (error) {
-    logger.error('Error saving article', error);
+    logger.error(error, 'Error saving article');
     res.status(500).json({ error: 'Failed to save article' });
   }
 });
@@ -156,7 +156,7 @@ app.delete('/api/v1/articles/:id/save', async (req: Request, res: Response) => {
 
     res.json({ success: true, message: 'Article unsaved' });
   } catch (error) {
-    logger.error('Error unsaving article', error);
+    logger.error(error, 'Error unsaving article');
     res.status(500).json({ error: 'Failed to unsave article' });
   }
 });
