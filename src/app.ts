@@ -168,13 +168,19 @@ app.get('/health', (req: Request, res: Response) => {
 // Root endpoint so the browser doesn't show an error
 app.get('/', (req: Request, res: Response) => {
   res.json({
-    message: "Netra News Hub API is Live! 🚀",
-    version: "v1",
-    endpoints: {
+    success: true,
+    greeting: "Namaste! 🙏 Welcome to Netra News Hub.",
+    message: "Your premium gateway to real-time, curated global and local news.",
+    status: "Live & Syncing 🟢",
+    version: "v1.0",
+    docs: {
+      hint: "Use the endpoints below to access the news engine directly from your Android App.",
       articles: "/api/v1/articles",
       categories: "/api/v1/categories?language=English",
-      languages: "/api/v1/languages"
-    }
+      languages: "/api/v1/languages",
+      search: "/api/v1/search?q=technology"
+    },
+    timestamp: new Date()
   });
 });
 
