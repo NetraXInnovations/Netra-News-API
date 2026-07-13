@@ -201,8 +201,14 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
 
     return {
       id: data.id,
+      language: data.language,
+      category: data.category,
       title: data.title,
+      source_url: data.sourceUrl,
       published_date: data.publishedDate,
+      published_time: data.publishedTime,
+      reading_time: data.readingTime,
+      is_saved: data.isSaved,
       content: cleanText
     };
   });
