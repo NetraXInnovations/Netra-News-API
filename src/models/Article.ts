@@ -36,7 +36,9 @@ const ArticleSchema = new Schema<IArticle>({
   timestamps: true // Manages createdAt and updatedAt
 });
 
-// For fast search operations
-ArticleSchema.index({ title: 'text', content: 'text' });
+ArticleSchema.index(
+  { title: 'text', content: 'text' },
+  { language_override: 'dummy' }
+);
 
 export const Article = mongoose.model<IArticle>('Article', ArticleSchema);
