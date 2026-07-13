@@ -168,7 +168,15 @@ app.get('/health', (req: Request, res: Response) => {
 
 // Root endpoint so the browser doesn't show an error
 app.get('/', (req: Request, res: Response) => {
-  res.send('<h1>Netra News Hub API is Live! 🚀</h1><p>Use /api/v1/articles to get news.</p>');
+  res.json({
+    message: "Netra News Hub API is Live! 🚀",
+    version: "v1",
+    endpoints: {
+      articles: "/api/v1/articles",
+      categories: "/api/v1/categories?language=English",
+      languages: "/api/v1/languages"
+    }
+  });
 });
 
 export default app;
