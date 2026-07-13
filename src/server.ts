@@ -37,7 +37,7 @@ async function startServer() {
       const syncInterval = setInterval(() => {
         logger.info('Running scheduled background RSS sync...');
         RssIngestionService.syncAllFeeds().catch((err: any) => logger.error({ error: err.message }, '⚠ Background RSS sync failed (continue)'));
-      }, 15 * 60 * 1000);
+      }, 2 * 60 * 60 * 1000); // Changed to 2 hours to save Firebase Free Quota
 
       const cleanupInterval = setInterval(() => {
         logger.info('Running scheduled background database cleanup...');
