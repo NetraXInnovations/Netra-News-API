@@ -132,7 +132,7 @@ app.get('/articles', asyncHandler(async (req: Request, res: Response) => {
     await fetchArticlesHelper(req, res, false);
   } catch (error: any) {
     logger.error({ error: error.message }, 'Failed to fetch articles');
-    sendResponse(res, 500, false, 'Failed to fetch articles');
+    sendResponse(res, 500, false, `Failed to fetch articles: ${error.message}`);
   }
 }));
 
@@ -141,7 +141,7 @@ app.get('/articles/latest', asyncHandler(async (req: Request, res: Response) => 
     await fetchArticlesHelper(req, res, true);
   } catch (error: any) {
     logger.error({ error: error.message }, 'Failed to fetch latest articles');
-    sendResponse(res, 500, false, 'Failed to fetch latest articles');
+    sendResponse(res, 500, false, `Failed to fetch latest articles: ${error.message}`);
   }
 }));
 
@@ -151,7 +151,8 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
 
-  let query: FirebaseFirestore.Query = db.collection('articles');
+  let query: FirebaseFirestore.Query = db.collection('articles')
+    .select('language', 'category', 'title', 'sourceUrl', 'publishedDate', 'publishedTime', 'readingTime', 'isSaved');
 
   if (language) {
     query = query.where('language', '==', language.toLowerCase());
