@@ -21,8 +21,7 @@ app.use(express.json());
 const formatArticle = (doc: any) => ({
   id: doc._id.toString(),
   title: doc.title,
-  publishedDate: doc.publishedDate,
-  publishedTime: doc.publishedTime || '',
+  publishedDate: `${doc.publishedDate} ${doc.publishedTime || ''}`.trim(),
   language: doc.language,
   category: doc.category,
   content: doc.content,
