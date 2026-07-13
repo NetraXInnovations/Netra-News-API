@@ -36,7 +36,18 @@ const allSources = [
   { sourceName: "News18 Telugu - Business", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/business.xml", language: "Telugu", category: "వ్యాపారం", englishName: "Business", languageCode: "te" },
   { sourceName: "News18 Telugu - Politics", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/national/politics-national.xml", language: "Telugu", category: "రాజకీయాలు", englishName: "Politics", languageCode: "te" },
   { sourceName: "News18 Telugu - Health", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/life-style/health.xml", language: "Telugu", category: "ఆరోగ్యం", englishName: "Health", languageCode: "te" },
-  { sourceName: "News18 Telugu - Cricket", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/cricket.xml", language: "Telugu", category: "క్రికెట్", englishName: "Cricket", languageCode: "te" }
+  { sourceName: "News18 Telugu - Cricket", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/cricket.xml", language: "Telugu", category: "క్రికెట్", englishName: "Cricket", languageCode: "te" },
+
+  // --- TAMIL ---
+  { sourceName: "News18 Tamil - Tamil Nadu", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/tamil-nadu.xml", language: "Tamil", category: "தமிழ்நாடு", englishName: "Tamil Nadu", languageCode: "ta" },
+  { sourceName: "News18 Tamil - India", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/national.xml", language: "Tamil", category: "இந்தியா", englishName: "India", languageCode: "ta" },
+  { sourceName: "News18 Tamil - World", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/international.xml", language: "Tamil", category: "உலகம்", englishName: "World", languageCode: "ta" },
+  { sourceName: "News18 Tamil - Education", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/education.xml", language: "Tamil", category: "கல்வி", englishName: "Education", languageCode: "ta" },
+  { sourceName: "News18 Tamil - Technology", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/technology.xml", language: "Tamil", category: "தொழில்நுட்பம்", englishName: "Technology", languageCode: "ta" },
+  { sourceName: "News18 Tamil - Business", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/business.xml", language: "Tamil", category: "வணிகம்", englishName: "Business", languageCode: "ta" },
+  { sourceName: "News18 Tamil - Entertainment", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/entertainment.xml", language: "Tamil", category: "பொழுதுபோக்கு", englishName: "Entertainment", languageCode: "ta" },
+  { sourceName: "News18 Tamil - Sports", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/sports.xml", language: "Tamil", category: "விளையாட்டு", englishName: "Sports", languageCode: "ta" },
+  { sourceName: "News18 Tamil - Health", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/lifestyle/health.xml", language: "Tamil", category: "ஆரோக்கியம்", englishName: "Health", languageCode: "ta" }
 ];
 
 async function seedMasterPrompt() {
