@@ -1,11 +1,11 @@
 import { RssIngestionService } from '../services/rssIngestionService';
-import { initFirebase } from '../db/db';
+import { connectDB } from '../db/db';
 import { logger } from '../config/logger';
 
 async function runLocalSync() {
   try {
-    initFirebase();
-    logger.info('Starting full local RSS sync to bypass Vercel timeouts...');
+    await connectDB();
+    logger.info('Starting full local RSS sync...');
     await RssIngestionService.syncAllFeeds();
     logger.info('Full local RSS sync completed successfully!');
   } catch (err) {

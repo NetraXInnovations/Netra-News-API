@@ -2,7 +2,7 @@ import app from './app';
 import { logger } from './config/logger';
 import { RssIngestionService } from './services/rssIngestionService';
 import { CleanupService } from './services/cleanupService';
-import { initFirebase } from './db/db';
+import { connectDB } from './db/db';
 
 // --- GLOBAL ERROR HANDLING ---
 process.on('uncaughtException', (err: Error) => {
@@ -17,9 +17,9 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
-    // 1. Initialize Firebase First
-    logger.info('Initializing Firebase...');
-    initFirebase();
+    // 1. Initialize MongoDB First
+    logger.info('Initializing MongoDB Atlas...');
+    await connectDB();
     
     // 2. Start Express
     const server = app.listen(PORT, () => {
@@ -37,7 +37,7 @@ async function startServer() {
       const syncInterval = setInterval(() => {
         logger.info('Running scheduled background RSS sync...');
         RssIngestionService.syncAllFeeds().catch((err: any) => logger.error({ error: err.message }, '⚠ Background RSS sync failed (continue)'));
-      }, 2 * 60 * 60 * 1000); // Changed to 2 hours to save Firebase Free Quota
+      }, 15 * 60 * 1000); // Back to 15 minutes because MongoDB has no strict quota!
 
       const cleanupInterval = setInterval(() => {
         logger.info('Running scheduled background database cleanup...');
@@ -73,8 +73,6 @@ async function startServer() {
       });
     });
   } catch (error: any) {
-    // If Firebase initialization fails, it throws here. 
-    // Express, RSS, and Cleanup will NOT start.
     logger.error('Startup aborted due to initialization failure.');
     process.exit(1);
   }

@@ -1,5 +1,6 @@
 import Parser from 'rss-parser';
-import { db } from '../db/db';
+import { RssSource } from '../models/RssSource';
+import { Article } from '../models/Article';
 import { ReadabilityService } from './readabilityService';
 import { logger } from '../config/logger';
 import axios from 'axios';
@@ -41,9 +42,7 @@ export class RssIngestionService {
     logger.info('✓ RSS Sync Started');
 
     try {
-      const snapshot = await db.collection('rss_sources').where('enabled', '==', true).orderBy('priority', 'desc').get();
-      const sources = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-
+      const sources = await RssSource.find({ enabled: true }).sort({ priority: -1 }).lean();
       logger.info({ count: sources.length }, 'Fetched active RSS sources');
 
       await this.runWithConcurrency(sources, 2, async (source: any) => {
@@ -60,52 +59,56 @@ export class RssIngestionService {
     }
   }
 
-  private static readonly CURRENT_AFFAIRS_FEEDS = new Set<string>([]);
-
-  private static async syncFeed(source: any): Promise<void> {
-    const { id: sourceId, language, category, sourceName, rssUrl } = source;
-    logger.info({ sourceName, rssUrl }, 'Syncing feed');
-
-    let articlesFound = 0;
-    let articlesImported = 0;
-    let syncError: string | null = null;
+  static async syncFeed(sourceData: any): Promise<void> {
+    const { rssUrl, sourceName, language, category, id } = sourceData;
 
     try {
-      let feed: any;
+      let xmlData: string;
       try {
         const response = await axios.get(rssUrl, {
-          timeout: 15000,
+          timeout: 10000,
           headers: {
-            'User-Agent': 'Mozilla/5.0',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
           }
         });
-        feed = await parser.parseString(response.data);
-      } catch (axiosError: any) {
-        logger.warn({ sourceName, rssUrl, error: axiosError.message }, 'Axios fetch failed, falling back to direct parser');
-        feed = await parser.parseURL(rssUrl);
+        xmlData = response.data;
+      } catch (err: any) {
+        throw new Error(`Axios fetch failed: ${err.message}`);
       }
-      
-      const items = feed.items || [];
-      articlesFound = items.length;
 
-      await this.runWithConcurrency(items, 5, async (item: any) => {
-        const link = item.link || item.guid;
-        const articleLink = link || (item.title ? `rss://no-link/${encodeURIComponent(item.title)}` : null);
-        if (!articleLink) return;
+      let feed: Parser.Output<{ [key: string]: any }>;
+      try {
+        feed = await parser.parseString(xmlData);
+      } catch (err: any) {
+        throw new Error(`XML Parse failed: ${err.message}`);
+      }
 
-        const isAffairsCloud = articleLink.includes('affairscloud.com');
-        const isCurrentAffairs = isAffairsCloud || RssIngestionService.CURRENT_AFFAIRS_FEEDS.has(rssUrl);
+      if (!feed.items || feed.items.length === 0) {
+        throw new Error('No items found in feed');
+      }
+
+      const isCurrentAffairs = category.toLowerCase() === 'current-affairs';
+      const isAffairsCloud = sourceName.includes('AffairsCloud');
+
+      // Process only newest 10 items per feed to save DB operations
+      const itemsToProcess = feed.items.slice(0, 10);
+      let articlesImported = 0;
+
+      await this.runWithConcurrency(itemsToProcess, 2, async (item) => {
+        const link = item.link?.trim() || item.guid?.trim();
+        if (!link) return;
+
+        // Clean link
+        const articleLink = link.split('?')[0];
 
         if (isAffairsCloud) {
           const splitArticles = await ReadabilityService.extractAffairsCloud(articleLink);
           if (splitArticles && splitArticles.length > 0) {
             for (const splitArt of splitArticles) {
-              const duplicateUrl = await db.collection('articles').where('sourceUrl', '==', splitArt.sourceUrl).limit(1).get();
-              if (!duplicateUrl.empty) continue;
-              const duplicateTitle = await db.collection('articles').where('title', '==', splitArt.title).limit(1).get();
-              if (!duplicateTitle.empty) continue;
+              const duplicateUrl = await Article.findOne({ sourceUrl: splitArt.sourceUrl }).lean();
+              if (duplicateUrl) continue;
+              const duplicateTitle = await Article.findOne({ title: splitArt.title }).lean();
+              if (duplicateTitle) continue;
 
               let finalCategory = category;
               const catLower = splitArt.categoryName.toLowerCase();
@@ -118,22 +121,20 @@ export class RssIngestionService {
               else if (catLower.includes('politics')) finalCategory = 'politics';
 
               const content = splitArt.content.trim() || splitArt.title || 'Content not available';
-              const summary = content.split('\n\n').filter(p => p.trim().length > 0)[0] || content;
               const readingTime = Math.max(1, Math.round(content.split(/\s+/).length / 200));
               const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
               
               const articleId = crypto.randomUUID();
-              await db.collection('articles').doc(articleId).set({
+              await Article.create({
+                id: articleId,
                 title: splitArt.title,
                 content: content,
-                summary: summary,
                 language: language.toLowerCase(),
                 category: finalCategory.toLowerCase(),
                 sourceName: sourceName,
                 sourceUrl: splitArt.sourceUrl,
                 publishedDate: publishedAt.toISOString().split('T')[0],
                 publishedTime: publishedAt.toISOString().split('T')[1].substring(0, 8),
-                createdAt: new Date().toISOString(),
                 readingTime: readingTime,
                 isSaved: false,
                 isActive: true,
@@ -148,13 +149,11 @@ export class RssIngestionService {
         // Standard feed handling
         const title = item.title?.trim() || 'Untitled';
 
-        // Duplicate Check 1: URL
-        const duplicateUrl = await db.collection('articles').where('sourceUrl', '==', articleLink).limit(1).get();
-        if (!duplicateUrl.empty) return;
+        const duplicateUrl = await Article.findOne({ sourceUrl: articleLink }).lean();
+        if (duplicateUrl) return;
 
-        // Duplicate Check 2: Title
-        const duplicateTitle = await db.collection('articles').where('title', '==', title).limit(1).get();
-        if (!duplicateTitle.empty) return;
+        const duplicateTitle = await Article.findOne({ title: title }).lean();
+        if (duplicateTitle) return;
 
         let extracted: any = null;
         try {
@@ -167,7 +166,6 @@ export class RssIngestionService {
         if (extracted && extracted.content && extracted.content.trim().length > 50) {
           content = extracted.content;
         } else {
-          // If true article extraction failed, fallback to raw RSS content summary
           const fallbackCandidates = [
             item['content:encoded'],
             item.content,
@@ -178,34 +176,25 @@ export class RssIngestionService {
            .map((s: string) => s.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').trim())
            .sort((a: string, b: string) => b.length - a.length);
 
-          content = fallbackCandidates[0] || '';
+          content = fallbackCandidates.length > 0 ? fallbackCandidates[0] : title;
         }
 
-        content = content.trim();
+        if (content.length < 50) return; // Skip incredibly short articles
 
-        // Final Validation
-        if (!content || content.length < 50) {
-          logger.warn({ link: articleLink, title }, 'Skipping — no real article text found or content too short');
-          return;
-        }
-
-        const finalTitle = extracted?.title?.trim() || title;
-        const readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\s+/).length / 200));
+        const readingTime = Math.max(1, Math.round(content.split(/\s+/).length / 200));
         const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
-        const summary = content.split('\n\n').filter((p: string) => p.trim().length > 0)[0] || content;
 
         const articleId = crypto.randomUUID();
-        await db.collection('articles').doc(articleId).set({
-          title: finalTitle,
+        await Article.create({
+          id: articleId,
+          title: title,
           content: content,
-          summary: summary,
           language: language.toLowerCase(),
           category: category.toLowerCase(),
           sourceName: sourceName,
           sourceUrl: articleLink,
           publishedDate: publishedAt.toISOString().split('T')[0],
           publishedTime: publishedAt.toISOString().split('T')[1].substring(0, 8),
-          createdAt: new Date().toISOString(),
           readingTime: readingTime,
           isSaved: false,
           isActive: true,
@@ -215,34 +204,13 @@ export class RssIngestionService {
         articlesImported++;
       });
 
-      await db.collection('rss_sources').doc(sourceId).update({
-        lastCheckedAt: new Date().toISOString()
-      });
-
-      logger.info(
-        { sourceName, articlesFound, articlesImported },
-        '✓ Feed Imported successfully'
-      );
+      // Update last checked time
+      if (id) {
+        await RssSource.updateOne({ _id: id }, { lastCheckedAt: new Date() });
+      }
 
     } catch (error: any) {
-      syncError = error.message;
-      logger.error(
-        { sourceName, rssUrl, error: error.message },
-        '⚠ Feed Failed (continue)'
-      );
-    } finally {
-      try {
-        await db.collection('sync_logs').add({
-          sourceName: sourceName,
-          status: syncError ? 'failure' : 'success',
-          articlesFound: articlesFound,
-          articlesImported: articlesImported,
-          error: syncError,
-          createdAt: new Date().toISOString()
-        });
-      } catch (logError: any) {
-        logger.error({ error: logError.message }, 'Failed to write sync log entry');
-      }
+      throw new Error(`Sync feed failed: ${error.message}`);
     }
   }
 }

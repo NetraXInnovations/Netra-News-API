@@ -1,11 +1,10 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import compression from 'compression';
-import { db } from './db/db';
 import { logger } from './config/logger';
-import { CleanupService } from './services/cleanupService';
-import { RssIngestionService } from './services/rssIngestionService';
 import { z } from 'zod';
+import { Article } from './models/Article';
+import { Category } from './models/Category';
 
 const app = express();
 
@@ -19,7 +18,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 const saveArticleSchema = z.object({
-  article_id: z.string() // Firestore IDs are standard strings, not necessarily UUIDs
+  article_id: z.string()
 });
 
 const sendResponse = (res: Response, statusCode: number, success: boolean, message: string, data: any = null) => {
@@ -31,71 +30,40 @@ const sendResponse = (res: Response, statusCode: number, success: boolean, messa
   });
 };
 
-// Async Handler to catch unhandled promise rejections in Express routes
 const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) => 
   (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 
 app.get('/', (req: Request, res: Response) => {
-  sendResponse(res, 200, true, 'Welcome to Netra News Hub API', {
-    name: 'Netra News Hub API',
-    version: '1.0.0',
-    endpoints: {
-      health: '/health',
-      stats: '/stats',
-      languages: '/languages',
-      categories: '/categories',
-      articles: '/articles',
-      articles_latest: '/articles/latest',
-      article_detail: '/article/:id',
-      saved_articles: '/saved',
-      save_article: '/save',
-      current_affairs: '/current-affairs'
-    }
-  });
+  sendResponse(res, 200, true, 'Netra News API is running on MongoDB Atlas!');
 });
 
-app.get('/health', asyncHandler(async (req: Request, res: Response) => {
-  try {
-    // Ping Firestore
-    await db.collection('languages').limit(1).get();
-    sendResponse(res, 200, true, 'Healthy database connection');
-  } catch (error: any) {
-    sendResponse(res, 500, false, 'Unhealthy database connection', { error: error.message });
-  }
-}));
-
-app.get('/stats', asyncHandler(async (req: Request, res: Response) => {
-  try {
-    const stats = await CleanupService.getLatestStats();
-    sendResponse(res, 200, true, 'Statistics retrieved successfully', stats);
-  } catch (error: any) {
-    logger.error({ error: error.message }, 'Failed to get stats');
-    sendResponse(res, 500, false, 'Failed to retrieve statistics');
-  }
-}));
-
-let cachedLanguages: any = null;
-let lastLanguagesFetch = 0;
-let cachedCategories: Record<string, any> = {};
-let lastCategoriesFetch: Record<string, number> = {};
-const CACHE_TTL = 24 * 60 * 60 * 1000;
+// Cache variables
+const cachedCategories: { [key: string]: any } = {};
+const lastCategoriesFetch: { [key: string]: number } = {};
+const CACHE_TTL = 5 * 60 * 1000;
 
 app.get('/languages', asyncHandler(async (req: Request, res: Response) => {
   try {
-    if (cachedLanguages && Date.now() - lastLanguagesFetch < CACHE_TTL) {
-      return sendResponse(res, 200, true, 'Languages retrieved successfully', cachedLanguages);
-    }
-    const snapshot = await db.collection('languages').where('enabled', '==', true).get();
-    const langs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => a.name.localeCompare(b.name));
+    const cats = await Category.find({ enabled: true }).sort({ name: 1 }).lean();
+    const uniqueLangs = new Set();
+    const result: any[] = [];
     
-    cachedLanguages = langs;
-    lastLanguagesFetch = Date.now();
-    sendResponse(res, 200, true, 'Languages retrieved successfully', langs);
+    cats.forEach(c => {
+      if (c.language && !uniqueLangs.has(c.language.toLowerCase())) {
+        uniqueLangs.add(c.language.toLowerCase());
+        result.push({
+          language: c.language.toLowerCase(),
+          name: c.language.charAt(0).toUpperCase() + c.language.slice(1)
+        });
+      }
+    });
+    
+    sendResponse(res, 200, true, 'Languages retrieved successfully', result);
   } catch (error: any) {
     logger.error({ error: error.message }, 'Failed to get languages');
-    sendResponse(res, 500, false, 'Failed to retrieve languages');
+    sendResponse(res, 500, false, `Failed to retrieve languages: ${error.message}`);
   }
 }));
 
@@ -108,14 +76,12 @@ app.get('/categories', asyncHandler(async (req: Request, res: Response) => {
       return sendResponse(res, 200, true, 'Categories retrieved successfully', cachedCategories[cacheKey]);
     }
 
-    let query: FirebaseFirestore.Query = db.collection('categories').where('enabled', '==', true);
-    const snapshot = await query.get();
-    let cats = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-
+    const filter: any = { enabled: true };
     if (langName) {
-      cats = cats.filter((c: any) => c.language && c.language.toLowerCase() === langName.toLowerCase());
+      filter.language = new RegExp(`^${langName}$`, 'i');
     }
-    cats = cats.sort((a: any, b: any) => (a.category || a.name).localeCompare(b.category || b.name));
+
+    let cats = await Category.find(filter).sort({ category: 1, name: 1 }).lean();
     
     cachedCategories[cacheKey] = cats;
     lastCategoriesFetch[cacheKey] = Date.now();
@@ -127,67 +93,33 @@ app.get('/categories', asyncHandler(async (req: Request, res: Response) => {
   }
 }));
 
-app.get('/articles', asyncHandler(async (req: Request, res: Response) => {
-  try {
-    await fetchArticlesHelper(req, res, false);
-  } catch (error: any) {
-    logger.error({ error: error.message }, 'Failed to fetch articles');
-    sendResponse(res, 500, false, `Failed to fetch articles: ${error.message}`);
-  }
-}));
-
-app.get('/articles/latest', asyncHandler(async (req: Request, res: Response) => {
-  try {
-    await fetchArticlesHelper(req, res, true);
-  } catch (error: any) {
-    logger.error({ error: error.message }, 'Failed to fetch latest articles');
-    sendResponse(res, 500, false, `Failed to fetch latest articles: ${error.message}`);
-  }
-}));
-
 async function fetchArticlesHelper(req: Request, res: Response, latestOnly: boolean) {
   const language = req.query.language as string;
   const category = req.query.category as string;
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
 
-  let query: FirebaseFirestore.Query = db.collection('articles')
-    .select('language', 'category', 'title', 'content', 'sourceUrl', 'publishedDate', 'publishedTime', 'readingTime', 'isSaved');
+  const filter: any = { isActive: true };
+  if (language) filter.language = new RegExp(`^${language}$`, 'i');
+  if (category) filter.category = new RegExp(`^${category}$`, 'i');
 
-  if (language) {
-    query = query.where('language', '==', language.toLowerCase());
-  }
-  if (category) {
-    query = query.where('category', '==', category.toLowerCase());
-  }
-
-  // Fetch matching documents
-  const snapshot = await query.get();
-  
-  // Sort in memory to bypass Firestore Composite Index requirements
-  let allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-  
-  allDocs.sort((a, b) => {
-    const timeA = new Date(`${a.publishedDate}T${a.publishedTime || '00:00:00'}`).getTime();
-    const timeB = new Date(`${b.publishedDate}T${b.publishedTime || '00:00:00'}`).getTime();
-    return timeB - timeA;
-  });
-
-  // Apply Pagination locally
   const startIndex = latestOnly ? 0 : (page - 1) * limit;
-  const endIndex = latestOnly ? 50 : startIndex + limit;
-  const paginatedDocs = allDocs.slice(startIndex, endIndex);
+  const fetchLimit = latestOnly ? 50 : limit;
 
-  const formattedArticles = paginatedDocs.map(data => {
+  // Blazingly fast MongoDB query
+  const articles = await Article.find(filter)
+    .sort({ publishedDate: -1, publishedTime: -1 })
+    .skip(startIndex)
+    .limit(fetchLimit)
+    .lean();
+
+  const formattedArticles = articles.map(data => {
     let cleanText = data.content || '';
     if (cleanText) {
-      // Clean up common junk from scrapers
       cleanText = cleanText
         .split('\n\n')
         .map((p: string) => {
-          // Remove HTTP links
           let cleanPara = p.replace(/https?:\/\/[^\s]+/g, '');
-          // Remove forward and backward slashes
           cleanPara = cleanPara.replace(/[\/\\]+/g, '');
           return cleanPara.trim();
         })
@@ -216,22 +148,35 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
   sendResponse(res, 200, true, 'Articles retrieved successfully', formattedArticles);
 }
 
+app.get('/articles', asyncHandler(async (req: Request, res: Response) => {
+  try {
+    await fetchArticlesHelper(req, res, false);
+  } catch (error: any) {
+    logger.error({ error: error.message }, 'Failed to fetch articles');
+    sendResponse(res, 500, false, `Failed to fetch articles: ${error.message}`);
+  }
+}));
+
+app.get('/articles/latest', asyncHandler(async (req: Request, res: Response) => {
+  try {
+    await fetchArticlesHelper(req, res, true);
+  } catch (error: any) {
+    logger.error({ error: error.message }, 'Failed to fetch latest articles');
+    sendResponse(res, 500, false, `Failed to fetch latest articles: ${error.message}`);
+  }
+}));
+
 app.get('/article/:id', asyncHandler(async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const doc = await db.collection('articles').doc(id).get();
+    const data = await Article.findOne({ id, isActive: true }).lean();
 
-    if (!doc.exists) {
-      return sendResponse(res, 404, false, 'Article not found');
-    }
-
-    const data = doc.data() as any;
-    if (!data.isActive) {
+    if (!data) {
       return sendResponse(res, 404, false, 'Article not found');
     }
 
     const formatted = {
-      id: doc.id,
+      id: data.id,
       language: data.language,
       category: data.category,
       title: data.title,
@@ -252,10 +197,11 @@ app.get('/article/:id', asyncHandler(async (req: Request, res: Response) => {
 
 app.get('/saved', asyncHandler(async (req: Request, res: Response) => {
   try {
-    const snapshot = await db.collection('articles').where('isSaved', '==', true).get();
+    const articles = await Article.find({ isSaved: true })
+      .sort({ savedAt: -1 })
+      .lean();
     
-    const formatted = snapshot.docs.map((doc: any) => {
-      const data = doc.data();
+    const formatted = articles.map(data => {
       let cleanText = data.content || '';
       if (cleanText) {
         cleanText = cleanText
@@ -274,7 +220,7 @@ app.get('/saved', asyncHandler(async (req: Request, res: Response) => {
       }
 
       return {
-        id: doc.id,
+        id: data.id,
         language: data.language,
         category: data.category,
         title: data.title,
@@ -288,13 +234,6 @@ app.get('/saved', asyncHandler(async (req: Request, res: Response) => {
       };
     });
 
-    // In-memory sort by savedAt desc
-    formatted.sort((a: any, b: any) => {
-       const da = a.saved_at ? new Date(a.saved_at).getTime() : 0;
-       const dbTime = b.saved_at ? new Date(b.saved_at).getTime() : 0;
-       return dbTime - da;
-    });
-
     sendResponse(res, 200, true, 'Saved articles retrieved successfully', formatted);
   } catch (error: any) {
     logger.error({ error: error.message }, 'Failed to fetch saved articles');
@@ -306,25 +245,15 @@ app.get('/current-affairs', asyncHandler(async (req: Request, res: Response) => 
   try {
     const language = req.query.language as string;
     
-    let query: FirebaseFirestore.Query = db.collection('articles')
-      .where('isCurrentAffairs', '==', true);
-      
-    if (language) {
-      query = query.where('language', '==', language.toLowerCase());
-    }
-    
-    const snapshot = await query.get();
-    
-    let allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-    allDocs.sort((a, b) => {
-      const timeA = new Date(`${a.publishedDate}T${a.publishedTime || '00:00:00'}`).getTime();
-      const timeB = new Date(`${b.publishedDate}T${b.publishedTime || '00:00:00'}`).getTime();
-      return timeB - timeA;
-    });
+    const filter: any = { isCurrentAffairs: true, isActive: true };
+    if (language) filter.language = new RegExp(`^${language}$`, 'i');
 
-    const paginatedDocs = allDocs.slice(0, 50);
+    const articles = await Article.find(filter)
+      .sort({ publishedDate: -1, publishedTime: -1 })
+      .limit(50)
+      .lean();
     
-    const formatted = paginatedDocs.map((data: any) => {
+    const formatted = articles.map((data: any) => {
       let cleanText = data.content || '';
       if (cleanText) {
         cleanText = cleanText
@@ -371,17 +300,15 @@ app.post('/save', asyncHandler(async (req: Request, res: Response) => {
     }
 
     const { article_id } = parseResult.data;
-    const docRef = db.collection('articles').doc(article_id);
-    const doc = await docRef.get();
+    const article = await Article.findOneAndUpdate(
+      { id: article_id },
+      { isSaved: true, savedAt: new Date().toISOString() },
+      { new: true }
+    );
 
-    if (!doc.exists) {
+    if (!article) {
       return sendResponse(res, 404, false, 'Article not found');
     }
-
-    await docRef.update({ 
-      isSaved: true,
-      savedAt: new Date().toISOString()
-    });
 
     sendResponse(res, 200, true, 'Article saved successfully');
   } catch (error: any) {
@@ -390,61 +317,34 @@ app.post('/save', asyncHandler(async (req: Request, res: Response) => {
   }
 }));
 
-app.delete('/save', asyncHandler(async (req: Request, res: Response) => {
+app.post('/unsave', asyncHandler(async (req: Request, res: Response) => {
   try {
-    const articleIdRaw = req.body.article_id || req.query.article_id;
-    
-    const parseResult = saveArticleSchema.safeParse({ article_id: articleIdRaw });
+    const parseResult = saveArticleSchema.safeParse(req.body);
     if (!parseResult.success) {
-      return sendResponse(res, 400, false, 'Invalid format for article_id');
+      return sendResponse(res, 400, false, 'Invalid format for article_id', parseResult.error.format());
     }
 
     const { article_id } = parseResult.data;
-    const docRef = db.collection('articles').doc(article_id);
-    const doc = await docRef.get();
+    const article = await Article.findOneAndUpdate(
+      { id: article_id },
+      { isSaved: false, savedAt: null },
+      { new: true }
+    );
 
-    if (!doc.exists) {
+    if (!article) {
       return sendResponse(res, 404, false, 'Article not found');
     }
-    
-    const data = doc.data();
-    if (!data?.isSaved) {
-      return sendResponse(res, 404, false, 'Article was not saved or not found');
-    }
 
-    await docRef.update({ 
-      isSaved: false,
-      savedAt: null
-    });
-
-    sendResponse(res, 200, true, 'Article removed from saved successfully');
+    sendResponse(res, 200, true, 'Article unsaved successfully');
   } catch (error: any) {
-    logger.error({ error: error.message }, 'Failed to remove saved article');
-    sendResponse(res, 500, false, 'Failed to remove saved article');
+    logger.error({ error: error.message }, 'Failed to unsave article');
+    sendResponse(res, 500, false, 'Failed to unsave article');
   }
 }));
 
-app.post('/jobs/sync', asyncHandler(async (req: Request, res: Response) => {
-  try {
-    RssIngestionService.syncAllFeeds().catch(err => logger.error({ err }, 'Async sync job failed'));
-    sendResponse(res, 202, true, 'RSS ingestion job triggered in the background');
-  } catch (error: any) {
-    sendResponse(res, 500, false, 'Failed to trigger RSS sync job');
-  }
-}));
-
-app.post('/jobs/cleanup', asyncHandler(async (req: Request, res: Response) => {
-  try {
-    const stats = await CleanupService.runCleanup();
-    sendResponse(res, 200, true, 'Database cleanup completed successfully', stats);
-  } catch (error: any) {
-    sendResponse(res, 500, false, 'Failed to run cleanup job');
-  }
-}));
-
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  logger.error({ err: err.message, stack: err.stack }, 'Unhandled request error');
-  sendResponse(res, 500, false, 'Internal Server Error');
+// Fallback logic inside the route handler, not global handler to avoid 500 errors when no handler found
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
 });
 
 export default app;
