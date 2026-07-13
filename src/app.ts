@@ -285,7 +285,7 @@ app.get('/current-affairs', asyncHandler(async (req: Request, res: Response) => 
     
     const formatted = paginatedDocs.map((data: any) => {
       return {
-        id: doc.id,
+        id: data.id,
         title: data.title,
         date: data.publishedDate,
         time: data.publishedTime,
