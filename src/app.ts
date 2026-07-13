@@ -48,7 +48,7 @@ app.get('/api/v1/categories', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'language parameter is required' });
     }
     const cats = await Category.find({ language: language as string, enabled: true }).sort({ name: 1 }).lean();
-    res.json(cats.map(c => ({ name: c.name })));
+    res.json(cats.map(c => ({ name: c.name, englishName: c.englishName })));
   } catch (error) {
     logger.error(error, 'Error fetching categories');
     res.status(500).json({ error: 'Failed to fetch categories' });

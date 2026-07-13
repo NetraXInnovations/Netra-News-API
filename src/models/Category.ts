@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface ICategory extends Document {
   language: string; // The language code, e.g. "en" or "english"
   name: string;
+  englishName?: string;
   enabled: boolean;
   createdAt: Date;
 }
@@ -10,6 +11,7 @@ export interface ICategory extends Document {
 const CategorySchema = new Schema<ICategory>({
   language: { type: String, required: true, index: true },
   name: { type: String, required: true, index: true },
+  englishName: { type: String },
   enabled: { type: Boolean, default: true },
 }, {
   timestamps: true // This will automatically manage createdAt and updatedAt
