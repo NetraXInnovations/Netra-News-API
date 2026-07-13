@@ -166,4 +166,9 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
+// Root endpoint so the browser doesn't show an error
+app.get('/', (req: Request, res: Response) => {
+  res.send('<h1>Netra News Hub API is Live! 🚀</h1><p>Use /api/v1/articles to get news.</p>');
+});
+
 export default app;
