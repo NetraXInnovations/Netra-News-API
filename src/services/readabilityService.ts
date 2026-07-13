@@ -125,6 +125,8 @@ export class ReadabilityService {
       $(el).append('\n\n');
     });
 
+    $('br').replaceWith('\n');
+
     // Format list items with bullet points
     $('li').each((_, el) => {
       $(el).prepend('• ').append('\n');
@@ -242,7 +244,9 @@ export class ReadabilityService {
         if (currentArticle) {
           const lowerText = text.toLowerCase();
           if (lowerText.includes('click here for') || lowerText.includes('we are hiring')) return;
-          currentArticle.contentParts.push(text);
+          
+          const formattedText = ReadabilityService.convertHtmlToFormattedText($el.html() || '').trim();
+          currentArticle.contentParts.push(formattedText);
         }
       });
 
