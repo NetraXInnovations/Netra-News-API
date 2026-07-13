@@ -178,18 +178,28 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
   const endIndex = latestOnly ? 50 : startIndex + limit;
   const paginatedDocs = allDocs.slice(startIndex, endIndex);
 
-  const formattedArticles = paginatedDocs.map(data => ({
-    id: data.id,
-    language: data.language,
-    category: data.category,
-    title: data.title,
-    content: data.content ? data.content.split('\n\n').map((p: string) => p.trim()).filter((p: string) => p.length > 0) : [],
-    source_url: data.sourceUrl,
-    published_date: data.publishedDate,
-    published_time: data.publishedTime,
-    reading_time: data.readingTime,
-    is_saved: data.isSaved
-  }));
+  const formattedArticles = paginatedDocs.map(data => {
+    let cleanText = data.content || '';
+    if (cleanText) {
+      // Clean up common junk from scrapers
+      cleanText = cleanText
+        .split('\n\n')
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 0)
+        .filter((p: string) => !p.includes('Photo Credit:'))
+        .filter((p: string) => !p.includes('Published - '))
+        .filter((p: string) => !p.includes('Get the latest'))
+        .filter((p: string) => !p.includes('Download the TOI App'))
+        .join('\n\n');
+    }
+
+    return {
+      id: data.id,
+      title: data.title,
+      published_date: data.publishedDate,
+      content: cleanText
+    };
+  });
 
   sendResponse(res, 200, true, 'Articles retrieved successfully', formattedArticles);
 }
