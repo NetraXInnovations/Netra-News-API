@@ -152,7 +152,7 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
   const limit = parseInt(req.query.limit as string) || 20;
 
   let query: FirebaseFirestore.Query = db.collection('articles')
-    .select('language', 'category', 'title', 'sourceUrl', 'publishedDate', 'publishedTime', 'readingTime', 'isSaved');
+    .select('language', 'category', 'title', 'content', 'sourceUrl', 'publishedDate', 'publishedTime', 'readingTime', 'isSaved');
 
   if (language) {
     query = query.where('language', '==', language.toLowerCase());
@@ -183,6 +183,7 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
     language: data.language,
     category: data.category,
     title: data.title,
+    content: data.content ? data.content.split('\n\n').map((p: string) => p.trim()).filter((p: string) => p.length > 0) : [],
     source_url: data.sourceUrl,
     published_date: data.publishedDate,
     published_time: data.publishedTime,
