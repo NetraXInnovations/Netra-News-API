@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "552633597012",
+    "firebase_url": "https://allinonescanner-f8373-default-rtdb.firebaseio.com",
+    "project_id": "allinonescanner-f8373",
+    "storage_bucket": "allinonescanner-f8373.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:552633597012:android:ebee0c36bd77f648b841c1",
+        "android_client_info": {
+          "package_name": "com.fieldarea.allinonescanner"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "552633597012-bqrhnff4aoqj7ddumn6j8io12bhvd8kf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fieldarea.allinonescanner",
+            "certificate_hash": "78e96d9e80eedb825707f6647570aafdd398dced"
+          }
+        },
+        {
+          "client_id": "552633597012-r397gga5v9jsmol565ktn0423c6vracc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNaXfR9o1_rJC37q6RQXLMAgVapB5JbTI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "552633597012-r397gga5v9jsmol565ktn0423c6vracc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

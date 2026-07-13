@@ -1,80 +1,61 @@
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import { initializeApp, cert, getApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import path from 'path';
+import fs from 'fs';
 import { logger } from '../config/logger';
 
-dotenv.config();
+let dbInstance: FirebaseFirestore.Firestore | any = null;
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+export async function initFirebase(): Promise<void> {
+  const serviceAccountPath = path.resolve(__dirname, '../../service-account.json');
+  
+  if (fs.existsSync(serviceAccountPath)) {
+    try {
+      initializeApp({
+        credential: cert(serviceAccountPath),
+      });
+      logger.info('✓ Firebase Initialized (via service-account.json)');
+    } catch (err: any) {
+      throw new Error(`Failed to initialize via service-account.json: ${err.message}`);
+    }
+  } else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    try {
+      initializeApp({
+        credential: cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          // Replace escaped newlines if passed via certain env environments
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+        })
+      });
+      logger.info('✓ Firebase Initialized (via Environment Variables)');
+    } catch (err: any) {
+      throw new Error(`Failed to initialize via ENV variables: ${err.message}`);
+    }
+  } else {
+    logger.error('✗ Firebase Initialization Failed');
+    logger.error('Missing configuration. You must provide EITHER a service-account.json file OR the following environment variables:');
+    logger.error('FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY');
+    throw new Error('Firebase Configuration Missing');
+  }
 
-if (!supabaseUrl || !supabaseKey) {
-  logger.warn('SUPABASE_URL or SUPABASE_ANON_KEY environment variable is missing.');
+  try {
+    dbInstance = getFirestore();
+    logger.info('✓ Firestore Connected');
+  } catch (error: any) {
+    logger.error('✗ Firestore Connection Failed');
+    throw new Error(`Firestore could not connect: ${error.message}`);
+  }
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseKey || '');
-
-export const db = {
-  query: async (text: string, params?: any[]): Promise<{ rows: any[]; rowCount: number }> => {
-    const start = Date.now();
-    try {
-      let sql = text;
-      
-      // Substitute placeholders ($1, $2, etc.) safely in the SQL string
-      if (params && params.length > 0) {
-        sql = sql.replace(/\$(\d+)/g, (match, digits) => {
-          const idx = parseInt(digits, 10) - 1;
-          if (idx >= 0 && idx < params.length) {
-            const val = params[idx];
-            if (val === null || val === undefined) {
-              return 'NULL';
-            } else if (typeof val === 'string') {
-              return `'${val.replace(/'/g, "''")}'`;
-            } else if (val instanceof Date) {
-              return `'${val.toISOString()}'`;
-            } else if (typeof val === 'object') {
-              return `'${JSON.stringify(val).replace(/'/g, "''")}'::jsonb`;
-            } else {
-              return String(val);
-            }
-          }
-          return match;
-        });
-      }
-
-      // Auto-append RETURNING * for DML statements so exec_sql doesn't crash
-      const upperSql = sql.trim().toUpperCase();
-      if ((upperSql.startsWith('INSERT') || upperSql.startsWith('UPDATE') || upperSql.startsWith('DELETE')) && !upperSql.includes('RETURNING')) {
-        sql += ' RETURNING *';
-      }
-
-      // Execute SQL via the exec_sql RPC helper over IPv4 HTTPS (Port 443)
-      const { data, error } = await supabase.rpc('exec_sql', { query_text: sql });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      if (data && data.error) {
-        throw new Error(data.error);
-      }
-
-      const rows = Array.isArray(data) ? data : [];
-      const duration = Date.now() - start;
-      logger.debug({ duration, rowsCount: rows.length }, 'HTTP SQL query executed');
-
-      return {
-        rows,
-        rowCount: rows.length
-      };
-    } catch (error: any) {
-      logger.error({ text, error: error.message }, 'Database query error');
-      throw error;
+// Proxied getter so that imports don't crash if imported before init
+export const db = new Proxy({} as any, {
+  get(target, prop) {
+    if (!dbInstance) {
+      throw new Error('Firestore is not initialized');
     }
+    return dbInstance[prop];
   }
-};
+});
 
-// Export pool object for backwards compatibility in standalone scripts
-export const pool = {
-  end: async () => {
-    // No-op for HTTP client connection
-  }
-};
+export const pool = { end: async () => {} };

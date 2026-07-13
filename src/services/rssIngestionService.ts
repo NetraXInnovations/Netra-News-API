@@ -3,6 +3,7 @@ import { db } from '../db/db';
 import { ReadabilityService } from './readabilityService';
 import { logger } from '../config/logger';
 import axios from 'axios';
+import crypto from 'crypto';
 
 const parser = new Parser({
   timeout: 15000,
@@ -13,10 +14,6 @@ const parser = new Parser({
 });
 
 export class RssIngestionService {
-  /**
-   * Helper to process items with a concurrent sliding window queue.
-   * Keeps exactly `concurrency` workers running until the queue is empty.
-   */
   private static async runWithConcurrency<T>(
     items: T[],
     concurrency: number,
@@ -32,7 +29,7 @@ export class RssIngestionService {
             try {
               await fn(item);
             } catch (err: any) {
-              logger.error({ error: err.message }, 'Error in concurrent worker task');
+              logger.error({ error: err.message }, '⚠ Item processing failed (continue)');
             }
           }
         }
@@ -43,7 +40,6 @@ export class RssIngestionService {
   private static cleanAndBuildParagraphs(rawText: string): string {
     if (!rawText) return 'No content available';
 
-    // STEP 1: Clean article text
     const skipKeywords = [
       "ALSO READ", "READ MORE", "ADVERTISEMENT", "Download App", "Disclaimer",
       "Promotional Text", "TargetReturnStopLoss", "Author Promotion", "Related Articles",
@@ -57,19 +53,15 @@ export class RssIngestionService {
       return true;
     });
 
-    // STEP 2: Sentence Detection
     const text = validLines.join(' ');
-    // Split by . ! ? ؟ (Arabic) ۔ (Urdu) । (Devanagari) ॥ followed by space and uppercase letter, or end of string.
     const sentenceRegex = /[^.!?؟۔।॥]+[.!?؟۔।॥]+/g;
     let sentences = text.match(sentenceRegex)?.map(s => s.trim()) || [text];
     if (sentences.length === 1 && sentences[0] === text && !text.match(/[.!?؟۔।॥]$/)) {
-        // Fallback if no punctuation matches
         sentences = [text];
     } else {
         sentences = sentences.filter(s => s.length > 0);
     }
 
-    // STEP 3: Paragraph Builder
     const paragraphs: string[] = [];
     let currentSentences: string[] = [];
     let currentLen = 0;
@@ -100,7 +92,6 @@ export class RssIngestionService {
       paragraphs.push(currentSentences.join(' '));
     }
 
-    // STEP 4: Content Length (target roughly 5000+ characters)
     let finalContent = '';
     for (const p of paragraphs) {
       if (finalContent.length >= 5000) {
@@ -112,39 +103,33 @@ export class RssIngestionService {
     return finalContent || 'No content available';
   }
 
-  /**
-   * Synchronizes all active RSS feeds in parallel batches.
-   */
   static async syncAllFeeds(): Promise<void> {
-    logger.info('Starting RSS synchronization job');
+    logger.info('✓ RSS Sync Started');
 
     try {
-      // 1. Fetch enabled RSS sources
-      const sourcesRes = await db.query(
-        'SELECT id, language_id, category_id, source_name, rss_url FROM rss_sources WHERE enabled = true ORDER BY priority DESC'
-      );
+      const snapshot = await db.collection('rss_sources').where('enabled', '==', true).orderBy('priority', 'desc').get();
+      const sources = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-      const sources = sourcesRes.rows;
       logger.info({ count: sources.length }, 'Fetched active RSS sources');
 
-      // Sync up to 2 feeds concurrently
-      await this.runWithConcurrency(sources, 2, async (source) => {
-        await this.syncFeed(source);
+      await this.runWithConcurrency(sources, 2, async (source: any) => {
+        try {
+          await this.syncFeed(source);
+        } catch (err: any) {
+          logger.error({ source: source.sourceName, error: err.message }, '⚠ Feed Failed (continue)');
+        }
       });
 
-      logger.info('RSS synchronization job completed successfully');
+      logger.info('✓ RSS Sync Completed successfully');
     } catch (error: any) {
-      logger.error({ error: error.message }, 'Failed to run RSS synchronization job');
+      logger.error({ error: error.message }, '⚠ Failed to run RSS synchronization job (continue)');
     }
   }
 
   private static readonly CURRENT_AFFAIRS_FEEDS = new Set<string>([]);
 
-  /**
-   * Syncs a single RSS source feed.
-   */
   private static async syncFeed(source: any): Promise<void> {
-    const { id: sourceId, language_id: languageId, category_id: categoryId, source_name: sourceName, rss_url: rssUrl } = source;
+    const { id: sourceId, language, category, sourceName, rssUrl } = source;
     logger.info({ sourceName, rssUrl }, 'Syncing feed');
 
     let articlesFound = 0;
@@ -152,13 +137,12 @@ export class RssIngestionService {
     let syncError: string | null = null;
 
     try {
-      // 2. Fetch and parse the feed
       let feed: any;
       try {
         const response = await axios.get(rssUrl, {
           timeout: 15000,
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
             'Cache-Control': 'no-cache',
@@ -177,90 +161,66 @@ export class RssIngestionService {
       const items = feed.items || [];
       articlesFound = items.length;
 
-      // Process up to 5 articles concurrently for faster ingestion
       await this.runWithConcurrency(items, 5, async (item: any) => {
         const link = item.link || item.guid;
-        // Always prefer link; if missing use a generated one from title so article is never lost
         const articleLink = link || (item.title ? `rss://no-link/${encodeURIComponent(item.title)}` : null);
-        if (!articleLink) return; // truly nothing to identify this item
+        if (!articleLink) return;
 
         const isAffairsCloud = articleLink.includes('affairscloud.com');
         const isCurrentAffairs = isAffairsCloud || RssIngestionService.CURRENT_AFFAIRS_FEEDS.has(rssUrl);
 
         if (isAffairsCloud) {
-          // Special split logic for AffairsCloud articles
           const splitArticles = await ReadabilityService.extractAffairsCloud(articleLink);
           if (splitArticles && splitArticles.length > 0) {
             for (const splitArt of splitArticles) {
-              const duplicateRes = await db.query(
-                'SELECT 1 FROM articles WHERE source_url = $1',
-                [splitArt.sourceUrl]
-              );
-
-              if (duplicateRes.rowCount && duplicateRes.rowCount > 0) {
-                continue; // Skip duplicate sub-article
+              const duplicateRes = await db.collection('articles').where('sourceUrl', '==', splitArt.sourceUrl).limit(1).get();
+              if (!duplicateRes.empty) {
+                continue;
               }
 
-              // Map Category Name to categoryId
-              let finalCategoryId = categoryId;
+              let finalCategory = category;
               const catLower = splitArt.categoryName.toLowerCase();
-              if (catLower.includes('national') || catLower.includes('india')) {
-                finalCategoryId = 1;
-              } else if (catLower.includes('international') || catLower.includes('world')) {
-                finalCategoryId = 2;
-              } else if (catLower.includes('sports')) {
-                finalCategoryId = 4;
-              } else if (catLower.includes('science') || catLower.includes('technology') || catLower.includes('environment')) {
-                finalCategoryId = 6;
-              } else if (catLower.includes('banking') || catLower.includes('finance') || catLower.includes('business')) {
-                finalCategoryId = 7;
-              } else if (catLower.includes('economy')) {
-                finalCategoryId = 12;
-              } else if (catLower.includes('politics')) {
-                finalCategoryId = 13;
-              } else if (catLower.includes('appointment') || catLower.includes('resignation') || catLower.includes('obituar') || catLower.includes('award') || catLower.includes('people') || catLower.includes('days')) {
-                finalCategoryId = 15;
-              }
+              if (catLower.includes('national') || catLower.includes('india')) finalCategory = 'national';
+              else if (catLower.includes('international') || catLower.includes('world')) finalCategory = 'international';
+              else if (catLower.includes('sports')) finalCategory = 'sports';
+              else if (catLower.includes('science') || catLower.includes('technology') || catLower.includes('environment')) finalCategory = 'technology';
+              else if (catLower.includes('banking') || catLower.includes('finance') || catLower.includes('business')) finalCategory = 'business';
+              else if (catLower.includes('economy')) finalCategory = 'economy';
+              else if (catLower.includes('politics')) finalCategory = 'politics';
 
               const content = splitArt.content.trim() || splitArt.title || 'Content not available';
-
-              // Extract a high-quality summary (first paragraph or first 250 characters)
-              const summary = content.split('\n').filter(p => p.trim().length > 0)[0] || content;
-              let readingTime = Math.max(1, Math.round(content.split(/\s+/).length / 200));
+              const summary = content.split('\\n').filter(p => p.trim().length > 0)[0] || content;
+              let readingTime = Math.max(1, Math.round(content.split(/\\s+/).length / 200));
               const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
-
-              await db.query(
-                `INSERT INTO articles (language_id, category_id, title, content, summary, source_url, published_at, reading_time, is_current_affairs)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                 ON CONFLICT (source_url) DO NOTHING`,
-                [
-                  languageId,
-                  finalCategoryId,
-                  splitArt.title,
-                  content,
-                  summary,
-                  splitArt.sourceUrl,
-                  publishedAt,
-                  readingTime,
-                  isCurrentAffairs
-                ]
-              );
+              
+              const articleId = crypto.randomUUID();
+              await db.collection('articles').doc(articleId).set({
+                title: splitArt.title,
+                content: content,
+                summary: summary,
+                language: language.toLowerCase(),
+                category: finalCategory.toLowerCase(),
+                sourceName: sourceName,
+                sourceUrl: splitArt.sourceUrl,
+                publishedDate: publishedAt.toISOString().split('T')[0],
+                publishedTime: publishedAt.toISOString().split('T')[1].substring(0, 8),
+                createdAt: new Date().toISOString(),
+                readingTime: readingTime,
+                isSaved: false,
+                isActive: true,
+                isCurrentAffairs: isCurrentAffairs
+              });
               articlesImported++;
             }
           }
           return;
         }
 
-        const duplicateRes = await db.query(
-          'SELECT 1 FROM articles WHERE source_url = $1',
-          [articleLink]
-        );
-
-        if (duplicateRes.rowCount && duplicateRes.rowCount > 0) {
-          return; // Already stored — skip duplicate
+        const duplicateRes = await db.collection('articles').where('sourceUrl', '==', articleLink).limit(1).get();
+        if (!duplicateRes.empty) {
+          return;
         }
 
-        // 4. Extract and clean full article content
         let extracted: any = null;
         try {
           extracted = await ReadabilityService.extract(link);
@@ -270,20 +230,18 @@ export class RssIngestionService {
         
         let content = '';
         if (extracted && extracted.content && extracted.content.trim().length > 100) {
-          // Best case: Readability extracted full article text
           content = extracted.content;
         } else {
-          // Gather every RSS field, strip HTML, pick the longest one
           const candidates = [
             item['content:encoded'],
             item.content,
             item.description,
             item.summary,
             item.contentSnippet,
-            extracted?.content   // even if short, still better than nothing
+            extracted?.content
           ]
             .filter(Boolean)
-            .map((s: string) => s.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').trim())
+            .map((s: string) => s.replace(/<[^>]+>/g, ' ').replace(/[ \\t]+/g, ' ').trim())
             .sort((a: string, b: string) => b.length - a.length);
 
           content = candidates[0] || '';
@@ -291,72 +249,63 @@ export class RssIngestionService {
         
         content = content.trim();
         content = this.cleanAndBuildParagraphs(content);
-
-        // Always use RSS item.title as the authoritative title — it's the most reliable source
         const title = item.title?.trim() || extracted?.title?.trim() || 'Untitled';
 
-        // No real content? Skip — don't save distortion/placeholder text
         if (!content || content === 'No content available' || content.trim().length < 50) {
           logger.warn({ link: articleLink, title }, 'Skipping — no real article text found');
           return;
         }
 
-        const readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\s+/).length / 200));
+        const readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\\s+/).length / 200));
         const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
-        const summary = content.split('\n').filter((p: string) => p.trim().length > 0)[0] || content;
+        const summary = content.split('\\n').filter((p: string) => p.trim().length > 0)[0] || content;
 
-        // 5. Store article — always, no skip
-        await db.query(
-          `INSERT INTO articles (language_id, category_id, title, content, summary, source_url, published_at, reading_time, is_current_affairs)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-           ON CONFLICT (source_url) DO NOTHING`,
-          [
-            languageId,
-            categoryId,
-            title,
-            content,
-            summary,
-            articleLink,
-            publishedAt,
-            readingTime,
-            isCurrentAffairs
-          ]
-        );
+        const articleId = crypto.randomUUID();
+        await db.collection('articles').doc(articleId).set({
+          title: title,
+          content: content,
+          summary: summary,
+          language: language.toLowerCase(),
+          category: category.toLowerCase(),
+          sourceName: sourceName,
+          sourceUrl: articleLink,
+          publishedDate: publishedAt.toISOString().split('T')[0],
+          publishedTime: publishedAt.toISOString().split('T')[1].substring(0, 8),
+          createdAt: new Date().toISOString(),
+          readingTime: readingTime,
+          isSaved: false,
+          isActive: true,
+          isCurrentAffairs: isCurrentAffairs
+        });
 
         articlesImported++;
       });
 
-      // Update last checked time
-      await db.query(
-        'UPDATE rss_sources SET last_checked_at = NOW() WHERE id = $1',
-        [sourceId]
-      );
+      await db.collection('rss_sources').doc(sourceId).update({
+        lastCheckedAt: new Date().toISOString()
+      });
 
       logger.info(
         { sourceName, articlesFound, articlesImported },
-        'Synced feed successfully'
+        '✓ Feed Imported successfully'
       );
 
     } catch (error: any) {
       syncError = error.message;
       logger.error(
         { sourceName, rssUrl, error: error.message },
-        'Failed to sync RSS source feed'
+        '⚠ Feed Failed (continue)'
       );
     } finally {
-      // 6. Log the sync result in sync_logs
       try {
-        await db.query(
-          `INSERT INTO sync_logs (rss_source_id, status, articles_found, articles_imported, error_message)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [
-            sourceId,
-            syncError ? 'failure' : 'success',
-            articlesFound,
-            articlesImported,
-            syncError
-          ]
-        );
+        await db.collection('sync_logs').add({
+          sourceName: sourceName,
+          status: syncError ? 'failure' : 'success',
+          articlesFound: articlesFound,
+          articlesImported: articlesImported,
+          error: syncError,
+          createdAt: new Date().toISOString()
+        });
       } catch (logError: any) {
         logger.error({ error: logError.message }, 'Failed to write sync log entry');
       }
