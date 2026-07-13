@@ -48,7 +48,15 @@ app.get('/api/v1/categories', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'language parameter is required' });
     }
     const cats = await Category.find({ language: language as string, enabled: true }).sort({ name: 1 }).lean();
-    res.json(cats.map(c => ({ name: c.name, englishName: c.englishName })));
+    
+    // Only show englishName if the requested language is NOT English
+    res.json(cats.map(c => {
+      const result: any = { name: c.name };
+      if (language !== 'English' && c.englishName) {
+        result.englishName = c.englishName;
+      }
+      return result;
+    }));
   } catch (error) {
     logger.error(error, 'Error fetching categories');
     res.status(500).json({ error: 'Failed to fetch categories' });
@@ -214,10 +222,10 @@ app.get('/', (req: Request, res: Response) => {
           text-align: left;
         }
         .endpoint {
-          margin: 10px 0;
+          margin: 15px 0;
           display: flex;
-          align-items: center;
-          justify-content: space-between;
+          flex-direction: column;
+          gap: 5px;
         }
         .badge {
           background: #3b82f6;
@@ -226,11 +234,18 @@ app.get('/', (req: Request, res: Response) => {
           border-radius: 20px;
           font-size: 0.8rem;
           font-weight: bold;
+          align-self: flex-start;
         }
         .url {
           color: #38bdf8;
           font-family: monospace;
           font-size: 1.1rem;
+          word-break: break-all;
+        }
+        .desc {
+          font-size: 0.85rem;
+          color: #cbd5e1;
+          margin-top: 2px;
         }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(20px); }
@@ -241,21 +256,40 @@ app.get('/', (req: Request, res: Response) => {
     <body>
       <div class="container">
         <h1>Netra News Hub API</h1>
-        <p>Your ultra-fast, dynamic news backend is successfully running online.</p>
+        <p>Your ultra-fast, dynamic news backend is running perfectly.</p>
         
         <div class="endpoint-box">
+          
           <div class="endpoint">
-            <span class="badge">GET</span>
-            <span class="url">/api/v1/articles</span>
-          </div>
-          <div class="endpoint">
-            <span class="badge">GET</span>
-            <span class="url">/api/v1/categories</span>
-          </div>
-          <div class="endpoint">
-            <span class="badge">GET</span>
+            <span class="badge">Languages</span>
             <span class="url">/api/v1/languages</span>
+            <span class="desc">Get all supported languages</span>
           </div>
+
+          <div class="endpoint">
+            <span class="badge">English Categories</span>
+            <span class="url">/api/v1/categories?language=English</span>
+            <span class="desc">Get all categories for English news</span>
+          </div>
+
+          <div class="endpoint">
+            <span class="badge">Hindi Categories</span>
+            <span class="url">/api/v1/categories?language=Hindi</span>
+            <span class="desc">Get all categories for Hindi news</span>
+          </div>
+
+          <div class="endpoint">
+            <span class="badge">English Articles</span>
+            <span class="url">/api/v1/articles?language=English</span>
+            <span class="desc">Get all English news articles</span>
+          </div>
+
+          <div class="endpoint">
+            <span class="badge">Hindi Articles</span>
+            <span class="url">/api/v1/articles?language=Hindi</span>
+            <span class="desc">Get all Hindi news articles</span>
+          </div>
+
         </div>
       </div>
     </body>
