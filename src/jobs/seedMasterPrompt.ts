@@ -24,7 +24,19 @@ const allSources = [
   { sourceName: "ABP Live Hindi", rssUrl: "https://www.abplive.com/technology/feed", language: "Hindi", category: "प्रौद्योगिकी", englishName: "Technology", languageCode: "hi" },
   { sourceName: "ABP Live Hindi", rssUrl: "https://www.abplive.com/education/feed", language: "Hindi", category: "शिक्षा", englishName: "Education", languageCode: "hi" },
   { sourceName: "ABP Live Hindi", rssUrl: "https://www.abplive.com/lifestyle/feed", language: "Hindi", category: "जीवनशैली", englishName: "Lifestyle", languageCode: "hi" },
-  { sourceName: "ABP Live Hindi", rssUrl: "https://www.abplive.com/lifestyle/health/feed", language: "Hindi", category: "स्वास्थ्य", englishName: "Health", languageCode: "hi" }
+  { sourceName: "ABP Live Hindi", rssUrl: "https://www.abplive.com/lifestyle/health/feed", language: "Hindi", category: "स्वास्थ्य", englishName: "Health", languageCode: "hi" },
+
+  // --- TELUGU ---
+  { sourceName: "News18 Telugu - Andhra Pradesh", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/andhra-pradesh.xml", language: "Telugu", category: "ఆంధ్రప్రదేశ్", englishName: "Andhra Pradesh", languageCode: "te" },
+  { sourceName: "News18 Telugu - Telangana", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/telangana.xml", language: "Telugu", category: "తెలంగాణ", englishName: "Telangana", languageCode: "te" },
+  { sourceName: "News18 Telugu - India", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/national.xml", language: "Telugu", category: "భారత్", englishName: "India", languageCode: "te" },
+  { sourceName: "News18 Telugu - World", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/international.xml", language: "Telugu", category: "ప్రపంచం", englishName: "World", languageCode: "te" },
+  { sourceName: "News18 Telugu - Technology", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/technology.xml", language: "Telugu", category: "సాంకేతికం", englishName: "Technology", languageCode: "te" },
+  { sourceName: "News18 Telugu - Sports", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/sports.xml", language: "Telugu", category: "క్రీడలు", englishName: "Sports", languageCode: "te" },
+  { sourceName: "News18 Telugu - Business", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/business.xml", language: "Telugu", category: "వ్యాపారం", englishName: "Business", languageCode: "te" },
+  { sourceName: "News18 Telugu - Politics", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/national/politics-national.xml", language: "Telugu", category: "రాజకీయాలు", englishName: "Politics", languageCode: "te" },
+  { sourceName: "News18 Telugu - Health", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/life-style/health.xml", language: "Telugu", category: "ఆరోగ్యం", englishName: "Health", languageCode: "te" },
+  { sourceName: "News18 Telugu - Cricket", rssUrl: "https://telugu.news18.com/commonfeeds/v1/tel/rss/cricket.xml", language: "Telugu", category: "క్రికెట్", englishName: "Cricket", languageCode: "te" }
 ];
 
 async function seedMasterPrompt() {
