@@ -37,72 +37,6 @@ export class RssIngestionService {
     await Promise.all(workers);
   }
 
-  private static cleanAndBuildParagraphs(rawText: string): string {
-    if (!rawText) return 'No content available';
-
-    const skipKeywords = [
-      "ALSO READ", "READ MORE", "ADVERTISEMENT", "Download App", "Disclaimer",
-      "Promotional Text", "TargetReturnStopLoss", "Author Promotion", "Related Articles",
-      "Sponsored Content", "Download TOI App", "Build Your Legacy",
-      "Stock market recommendations"
-    ];
-
-    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    const validLines = lines.filter(line => {
-      if (skipKeywords.some(kw => line.toLowerCase().includes(kw.toLowerCase()))) return false;
-      return true;
-    });
-
-    const text = validLines.join(' ');
-    const sentenceRegex = /[^.!?؟۔।॥]+[.!?؟۔।॥]+/g;
-    let sentences = text.match(sentenceRegex)?.map(s => s.trim()) || [text];
-    if (sentences.length === 1 && sentences[0] === text && !text.match(/[.!?؟۔।॥]$/)) {
-        sentences = [text];
-    } else {
-        sentences = sentences.filter(s => s.length > 0);
-    }
-
-    const paragraphs: string[] = [];
-    let currentSentences: string[] = [];
-    let currentLen = 0;
-
-    for (const sentence of sentences) {
-      if (!sentence) continue;
-      
-      const potentialLen = currentLen + (currentSentences.length > 0 ? 1 : 0) + sentence.length;
-      
-      if (currentSentences.length >= 4 || potentialLen > 350) {
-        if (currentSentences.length > 0) {
-          paragraphs.push(currentSentences.join(' '));
-        }
-        currentSentences = [sentence];
-        currentLen = sentence.length;
-      } else {
-        currentSentences.push(sentence);
-        currentLen = potentialLen;
-        if (currentLen >= 120 && currentSentences.length >= 2) {
-          paragraphs.push(currentSentences.join(' '));
-          currentSentences = [];
-          currentLen = 0;
-        }
-      }
-    }
-    
-    if (currentSentences.length > 0) {
-      paragraphs.push(currentSentences.join(' '));
-    }
-
-    let finalContent = '';
-    for (const p of paragraphs) {
-      if (finalContent.length >= 5000) {
-        break;
-      }
-      finalContent += (finalContent ? '\n\n' : '') + p;
-    }
-    
-    return finalContent || 'No content available';
-  }
-
   static async syncAllFeeds(): Promise<void> {
     logger.info('✓ RSS Sync Started');
 
@@ -145,12 +79,6 @@ export class RssIngestionService {
             'User-Agent': 'Mozilla/5.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Upgrade-Insecure-Requests': '1'
           }
         });
         feed = await parser.parseString(response.data);
@@ -158,6 +86,7 @@ export class RssIngestionService {
         logger.warn({ sourceName, rssUrl, error: axiosError.message }, 'Axios fetch failed, falling back to direct parser');
         feed = await parser.parseURL(rssUrl);
       }
+      
       const items = feed.items || [];
       articlesFound = items.length;
 
@@ -173,10 +102,10 @@ export class RssIngestionService {
           const splitArticles = await ReadabilityService.extractAffairsCloud(articleLink);
           if (splitArticles && splitArticles.length > 0) {
             for (const splitArt of splitArticles) {
-              const duplicateRes = await db.collection('articles').where('sourceUrl', '==', splitArt.sourceUrl).limit(1).get();
-              if (!duplicateRes.empty) {
-                continue;
-              }
+              const duplicateUrl = await db.collection('articles').where('sourceUrl', '==', splitArt.sourceUrl).limit(1).get();
+              if (!duplicateUrl.empty) continue;
+              const duplicateTitle = await db.collection('articles').where('title', '==', splitArt.title).limit(1).get();
+              if (!duplicateTitle.empty) continue;
 
               let finalCategory = category;
               const catLower = splitArt.categoryName.toLowerCase();
@@ -189,8 +118,8 @@ export class RssIngestionService {
               else if (catLower.includes('politics')) finalCategory = 'politics';
 
               const content = splitArt.content.trim() || splitArt.title || 'Content not available';
-              const summary = content.split('\\n').filter(p => p.trim().length > 0)[0] || content;
-              let readingTime = Math.max(1, Math.round(content.split(/\\s+/).length / 200));
+              const summary = content.split('\n\n').filter(p => p.trim().length > 0)[0] || content;
+              const readingTime = Math.max(1, Math.round(content.split(/\s+/).length / 200));
               const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
               
               const articleId = crypto.randomUUID();
@@ -216,10 +145,16 @@ export class RssIngestionService {
           return;
         }
 
-        const duplicateRes = await db.collection('articles').where('sourceUrl', '==', articleLink).limit(1).get();
-        if (!duplicateRes.empty) {
-          return;
-        }
+        // Standard feed handling
+        const title = item.title?.trim() || 'Untitled';
+
+        // Duplicate Check 1: URL
+        const duplicateUrl = await db.collection('articles').where('sourceUrl', '==', articleLink).limit(1).get();
+        if (!duplicateUrl.empty) return;
+
+        // Duplicate Check 2: Title
+        const duplicateTitle = await db.collection('articles').where('title', '==', title).limit(1).get();
+        if (!duplicateTitle.empty) return;
 
         let extracted: any = null;
         try {
@@ -229,40 +164,39 @@ export class RssIngestionService {
         }
         
         let content = '';
-        if (extracted && extracted.content && extracted.content.trim().length > 100) {
+        if (extracted && extracted.content && extracted.content.trim().length > 50) {
           content = extracted.content;
         } else {
-          const candidates = [
+          // If true article extraction failed, fallback to raw RSS content summary
+          const fallbackCandidates = [
             item['content:encoded'],
             item.content,
             item.description,
             item.summary,
-            item.contentSnippet,
-            extracted?.content
-          ]
-            .filter(Boolean)
-            .map((s: string) => s.replace(/<[^>]+>/g, ' ').replace(/[ \\t]+/g, ' ').trim())
-            .sort((a: string, b: string) => b.length - a.length);
+            item.contentSnippet
+          ].filter(Boolean)
+           .map((s: string) => s.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').trim())
+           .sort((a: string, b: string) => b.length - a.length);
 
-          content = candidates[0] || '';
+          content = fallbackCandidates[0] || '';
         }
-        
-        content = content.trim();
-        content = this.cleanAndBuildParagraphs(content);
-        const title = item.title?.trim() || extracted?.title?.trim() || 'Untitled';
 
-        if (!content || content === 'No content available' || content.trim().length < 50) {
-          logger.warn({ link: articleLink, title }, 'Skipping — no real article text found');
+        content = content.trim();
+
+        // Final Validation
+        if (!content || content.length < 50) {
+          logger.warn({ link: articleLink, title }, 'Skipping — no real article text found or content too short');
           return;
         }
 
-        const readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\\s+/).length / 200));
+        const finalTitle = extracted?.title?.trim() || title;
+        const readingTime = extracted?.readingTime || Math.max(1, Math.round(content.split(/\s+/).length / 200));
         const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
-        const summary = content.split('\\n').filter((p: string) => p.trim().length > 0)[0] || content;
+        const summary = content.split('\n\n').filter((p: string) => p.trim().length > 0)[0] || content;
 
         const articleId = crypto.randomUUID();
         await db.collection('articles').doc(articleId).set({
-          title: title,
+          title: finalTitle,
           content: content,
           summary: summary,
           language: language.toLowerCase(),
