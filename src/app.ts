@@ -123,7 +123,7 @@ app.get('/categories', asyncHandler(async (req: Request, res: Response) => {
     sendResponse(res, 200, true, 'Categories retrieved successfully', cats);
   } catch (error: any) {
     logger.error({ error: error.message }, 'Failed to get categories');
-    sendResponse(res, 500, false, 'Failed to retrieve categories');
+    sendResponse(res, 500, false, `Failed to retrieve categories: ${error.message}`);
   }
 }));
 
