@@ -256,12 +256,29 @@ app.get('/saved', asyncHandler(async (req: Request, res: Response) => {
     
     const formatted = snapshot.docs.map((doc: any) => {
       const data = doc.data();
+      let cleanText = data.content || '';
+      if (cleanText) {
+        cleanText = cleanText
+          .split('\n\n')
+          .map((p: string) => {
+            let cleanPara = p.replace(/https?:\/\/[^\s]+/g, '');
+            cleanPara = cleanPara.replace(/[\/\\]+/g, '');
+            return cleanPara.trim();
+          })
+          .filter((p: string) => p.length > 0)
+          .filter((p: string) => !p.includes('Photo Credit:'))
+          .filter((p: string) => !p.includes('Published - '))
+          .filter((p: string) => !p.includes('Get the latest'))
+          .filter((p: string) => !p.includes('Download the TOI App'))
+          .join('\n\n');
+      }
+
       return {
         id: doc.id,
         language: data.language,
         category: data.category,
         title: data.title,
-        content: data.content,
+        content: cleanText,
         source_url: data.sourceUrl,
         published_date: data.publishedDate,
         published_time: data.publishedTime,
@@ -308,13 +325,34 @@ app.get('/current-affairs', asyncHandler(async (req: Request, res: Response) => 
     const paginatedDocs = allDocs.slice(0, 50);
     
     const formatted = paginatedDocs.map((data: any) => {
+      let cleanText = data.content || '';
+      if (cleanText) {
+        cleanText = cleanText
+          .split('\n\n')
+          .map((p: string) => {
+            let cleanPara = p.replace(/https?:\/\/[^\s]+/g, '');
+            cleanPara = cleanPara.replace(/[\/\\]+/g, '');
+            return cleanPara.trim();
+          })
+          .filter((p: string) => p.length > 0)
+          .filter((p: string) => !p.includes('Photo Credit:'))
+          .filter((p: string) => !p.includes('Published - '))
+          .filter((p: string) => !p.includes('Get the latest'))
+          .filter((p: string) => !p.includes('Download the TOI App'))
+          .join('\n\n');
+      }
+
       return {
         id: data.id,
+        language: data.language,
+        category: data.category,
         title: data.title,
-        date: data.publishedDate,
-        time: data.publishedTime,
-        content: data.content.split('\\n\\n').map((p: string) => p.trim()).filter((p: string) => p.length > 0),
-        summary: data.summary || ''
+        source_url: data.sourceUrl,
+        published_date: data.publishedDate,
+        published_time: data.publishedTime,
+        reading_time: data.readingTime,
+        is_saved: data.isSaved,
+        content: cleanText
       };
     });
     
