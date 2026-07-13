@@ -1,5 +1,4 @@
-import { connectDB } from '../db/db';
-import { RssSource } from '../models/RssSource';
+import { db, initFirebase } from '../db/db';
 import { logger } from '../config/logger';
 
 const defaultSources = [
@@ -46,18 +45,23 @@ const defaultSources = [
 ];
 
 async function seed() {
-  await connectDB();
-  logger.info('Seeding default RSS sources to MongoDB Atlas...');
-  
+  initFirebase();
+  logger.info('Seeding default RSS sources to Firestore...');
+  const batch = db.batch();
+  const sourcesRef = db.collection('rss_sources');
+
+  for (const source of defaultSources) {
+    const docRef = sourcesRef.doc();
+    batch.set(docRef, {
+      ...source,
+      createdAt: new Date().toISOString(),
+      lastCheckedAt: null
+    });
+  }
+
   try {
-    for (const source of defaultSources) {
-      await RssSource.updateOne(
-        { rssUrl: source.rssUrl },
-        { $set: source },
-        { upsert: true }
-      );
-    }
-    logger.info(`✓ Successfully seeded ${defaultSources.length} sources into MongoDB!`);
+    await batch.commit();
+    logger.info(`✓ Successfully seeded ${defaultSources.length} sources into Firestore!`);
     process.exit(0);
   } catch (err: any) {
     logger.error({ error: err.message }, 'Failed to seed sources');

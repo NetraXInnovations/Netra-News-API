@@ -27,6 +27,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.19.2",
+    "firebase-admin": "^14.1.0",
     "jsdom": "^24.1.0",
     "mongoose": "^9.7.4",
     "pino": "^9.2.0",
