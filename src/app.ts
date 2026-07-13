@@ -184,7 +184,13 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
       // Clean up common junk from scrapers
       cleanText = cleanText
         .split('\n\n')
-        .map((p: string) => p.trim())
+        .map((p: string) => {
+          // Remove HTTP links
+          let cleanPara = p.replace(/https?:\/\/[^\s]+/g, '');
+          // Remove forward and backward slashes
+          cleanPara = cleanPara.replace(/[\/\\]+/g, '');
+          return cleanPara.trim();
+        })
         .filter((p: string) => p.length > 0)
         .filter((p: string) => !p.includes('Photo Credit:'))
         .filter((p: string) => !p.includes('Published - '))
