@@ -47,7 +47,16 @@ const allSources = [
   { sourceName: "News18 Tamil - Business", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/business.xml", language: "Tamil", category: "வணிகம்", englishName: "Business", languageCode: "ta" },
   { sourceName: "News18 Tamil - Entertainment", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/entertainment.xml", language: "Tamil", category: "பொழுதுபோக்கு", englishName: "Entertainment", languageCode: "ta" },
   { sourceName: "News18 Tamil - Sports", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/sports.xml", language: "Tamil", category: "விளையாட்டு", englishName: "Sports", languageCode: "ta" },
-  { sourceName: "News18 Tamil - Health", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/lifestyle/health.xml", language: "Tamil", category: "ஆரோக்கியம்", englishName: "Health", languageCode: "ta" }
+  { sourceName: "News18 Tamil - Health", rssUrl: "https://tamil.news18.com/commonfeeds/v1/tam/rss/lifestyle/health.xml", language: "Tamil", category: "ஆரோக்கியம்", englishName: "Health", languageCode: "ta" },
+
+  // --- KANNADA ---
+  { sourceName: "News18 Kannada - Sports", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/sports.xml", language: "Kannada", category: "ಕ್ರೀಡೆ", englishName: "Sports", languageCode: "kn" },
+  { sourceName: "News18 Kannada - Cricket", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/cricket-2.xml", language: "Kannada", category: "ಕ್ರಿಕೆಟ್", englishName: "Cricket", languageCode: "kn" },
+  { sourceName: "News18 Kannada - Business", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/business.xml", language: "Kannada", category: "ವ್ಯವಹಾರ", englishName: "Business", languageCode: "kn" },
+  { sourceName: "News18 Kannada - Health", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/lifestyle/health.xml", language: "Kannada", category: "ಆರೋಗ್ಯ", englishName: "Health", languageCode: "kn" },
+  { sourceName: "News18 Kannada - Education", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/jobs/education.xml", language: "Kannada", category: "ಶಿಕ್ಷಣ", englishName: "Education", languageCode: "kn" },
+  { sourceName: "News18 Kannada - Technology", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/tech-trend.xml", language: "Kannada", category: "ತಂತ್ರಜ್ಞಾನ", englishName: "Technology", languageCode: "kn" },
+  { sourceName: "News18 Kannada - Entertainment", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/entertainment.xml", language: "Kannada", category: "ಮನರಂಜನೆ", englishName: "Entertainment", languageCode: "kn" }
 ];
 
 async function seedMasterPrompt() {
