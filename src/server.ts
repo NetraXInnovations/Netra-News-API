@@ -22,7 +22,7 @@ async function startServer() {
     await connectDB();
     
     // 2. Start Express
-    const server = app.listen(PORT, () => {
+    const server = app.listen(PORT as number, '0.0.0.0', () => {
       logger.info('✓ Express Started');
       
       // 3. Start RSS Sync
