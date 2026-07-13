@@ -151,8 +151,7 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
 
-  let query: FirebaseFirestore.Query = db.collection('articles')
-    .where('isActive', '==', true);
+  let query: FirebaseFirestore.Query = db.collection('articles');
 
   if (language) {
     query = query.where('language', '==', language.toLowerCase());
@@ -161,30 +160,34 @@ async function fetchArticlesHelper(req: Request, res: Response, latestOnly: bool
     query = query.where('category', '==', category.toLowerCase());
   }
 
-  // Need composite indexes in Firestore for these sorting queries
-  query = query.orderBy('publishedDate', 'desc');
-
-  if (latestOnly) {
-    query = query.limit(50);
-  } else {
-    query = query.offset((page - 1) * limit).limit(limit);
-  }
-
+  // Fetch matching documents
   const snapshot = await query.get();
-  const formattedArticles = snapshot.docs.map((doc: any) => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      language: data.language,
-      category: data.category,
-      title: data.title,
-      source_url: data.sourceUrl,
-      published_date: data.publishedDate,
-      published_time: data.publishedTime,
-      reading_time: data.readingTime,
-      is_saved: data.isSaved
-    };
+  
+  // Sort in memory to bypass Firestore Composite Index requirements
+  let allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+  
+  allDocs.sort((a, b) => {
+    const timeA = new Date(`${a.publishedDate}T${a.publishedTime || '00:00:00'}`).getTime();
+    const timeB = new Date(`${b.publishedDate}T${b.publishedTime || '00:00:00'}`).getTime();
+    return timeB - timeA;
   });
+
+  // Apply Pagination locally
+  const startIndex = latestOnly ? 0 : (page - 1) * limit;
+  const endIndex = latestOnly ? 50 : startIndex + limit;
+  const paginatedDocs = allDocs.slice(startIndex, endIndex);
+
+  const formattedArticles = paginatedDocs.map(data => ({
+    id: data.id,
+    language: data.language,
+    category: data.category,
+    title: data.title,
+    source_url: data.sourceUrl,
+    published_date: data.publishedDate,
+    published_time: data.publishedTime,
+    reading_time: data.readingTime,
+    is_saved: data.isSaved
+  }));
 
   sendResponse(res, 200, true, 'Articles retrieved successfully', formattedArticles);
 }
@@ -263,18 +266,24 @@ app.get('/current-affairs', asyncHandler(async (req: Request, res: Response) => 
     const language = req.query.language as string;
     
     let query: FirebaseFirestore.Query = db.collection('articles')
-      .where('isActive', '==', true)
       .where('isCurrentAffairs', '==', true);
       
     if (language) {
       query = query.where('language', '==', language.toLowerCase());
     }
     
-    query = query.orderBy('publishedDate', 'desc').limit(50);
     const snapshot = await query.get();
     
-    const formatted = snapshot.docs.map((doc: any) => {
-      const data = doc.data();
+    let allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+    allDocs.sort((a, b) => {
+      const timeA = new Date(`${a.publishedDate}T${a.publishedTime || '00:00:00'}`).getTime();
+      const timeB = new Date(`${b.publishedDate}T${b.publishedTime || '00:00:00'}`).getTime();
+      return timeB - timeA;
+    });
+
+    const paginatedDocs = allDocs.slice(0, 50);
+    
+    const formatted = paginatedDocs.map((data: any) => {
       return {
         id: doc.id,
         title: data.title,
