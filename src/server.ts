@@ -17,13 +17,13 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
-    // 1. Initialize MongoDB First
-    logger.info('Initializing MongoDB Atlas...');
-    await connectDB();
-    
-    // 2. Start Express
-    const server = app.listen(PORT as number, '0.0.0.0', () => {
+    // 1. Start Express First so Railway Healthcheck Passes
+    const server = app.listen(PORT as number, '0.0.0.0', async () => {
       logger.info('✓ Express Started');
+      
+      // 2. Initialize MongoDB Atlas
+      logger.info('Initializing MongoDB Atlas...');
+      await connectDB();
       
       // 3. Start RSS Sync
       logger.info('✓ RSS Engine Started');
