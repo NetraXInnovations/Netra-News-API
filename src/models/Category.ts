@@ -1,21 +1,21 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ICategory extends Document {
-  id: string;
+  language: string; // The language code, e.g. "en" or "english"
   name: string;
-  category: string;
-  language: string;
   enabled: boolean;
+  createdAt: Date;
 }
 
 const CategorySchema = new Schema<ICategory>({
-  id: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  category: { type: String, required: true },
   language: { type: String, required: true, index: true },
-  enabled: { type: Boolean, default: true }
+  name: { type: String, required: true, index: true },
+  enabled: { type: Boolean, default: true },
 }, {
-  timestamps: true
+  timestamps: true // This will automatically manage createdAt and updatedAt
 });
+
+// Ensure a category is unique per language
+CategorySchema.index({ language: 1, name: 1 }, { unique: true });
 
 export const Category = mongoose.model<ICategory>('Category', CategorySchema);

@@ -1,216 +1,161 @@
 import Parser from 'rss-parser';
-import { RssSource } from '../models/RssSource';
-import { Article } from '../models/Article';
-import { ReadabilityService } from './readabilityService';
-import { logger } from '../config/logger';
 import axios from 'axios';
+import { JSDOM } from 'jsdom';
+import { Readability } from '@mozilla/readability';
+import * as cheerio from 'cheerio';
 import crypto from 'crypto';
 
+import { RssSource } from '../models/RssSource';
+import { Article } from '../models/Article';
+import { Language } from '../models/Language';
+import { Category } from '../models/Category';
+import { logger } from '../config/logger';
+
 const parser = new Parser({
-  timeout: 15000,
-  headers: {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+  customFields: {
+    item: ['media:content', 'description']
   }
 });
 
 export class RssIngestionService {
-  private static async runWithConcurrency<T>(
-    items: T[],
-    concurrency: number,
-    fn: (item: T) => Promise<void>
-  ): Promise<void> {
-    const queue = [...items];
-    const workers = Array(Math.min(concurrency, queue.length))
-      .fill(null)
-      .map(async () => {
-        while (queue.length > 0) {
-          const item = queue.shift();
-          if (item) {
-            try {
-              await fn(item);
-            } catch (err: any) {
-              logger.error({ error: err.message }, '⚠ Item processing failed (continue)');
-            }
-          }
-        }
-      });
-    await Promise.all(workers);
+  /**
+   * Cleans text to produce proper HTML paragraphs, removing raw newlines.
+   */
+  private static cleanContent(htmlContent: string): string {
+    const $ = cheerio.load(htmlContent);
+    let text = $('body').text();
+    
+    // Remove unwanted chars and normalize spacing
+    text = text.replace(/\\n/g, '\n').replace(/\\t/g, '').replace(/\r/g, '');
+    
+    // Split into paragraphs by newlines
+    const paragraphs = text
+      .split('\n')
+      .map(p => p.trim())
+      .filter(p => p.length > 0)
+      .map(p => `<p>${p}</p>`);
+      
+    return paragraphs.join('\n\n');
   }
 
-  static async syncAllFeeds(): Promise<void> {
-    logger.info('✓ RSS Sync Started');
-
-    try {
-      const sources = await RssSource.find({ enabled: true }).sort({ priority: -1 }).lean();
-      logger.info({ count: sources.length }, 'Fetched active RSS sources');
-
-      await this.runWithConcurrency(sources, 2, async (source: any) => {
-        try {
-          await this.syncFeed(source);
-        } catch (err: any) {
-          logger.error({ source: source.sourceName, error: err.message }, '⚠ Feed Failed (continue)');
-        }
-      });
-
-      logger.info('✓ RSS Sync Completed successfully');
-    } catch (error: any) {
-      logger.error({ error: error.message }, '⚠ Failed to run RSS synchronization job (continue)');
-    }
+  /**
+   * Creates a simple summary from the cleaned content.
+   */
+  private static generateSummary(cleanedContent: string): string {
+    const $ = cheerio.load(cleanedContent);
+    const plainText = $.text();
+    return plainText.length > 150 ? plainText.substring(0, 150) + '...' : plainText;
   }
 
-  static async syncFeed(sourceData: any): Promise<void> {
-    const { rssUrl, sourceName, language, category, id } = sourceData;
+  /**
+   * Ensure language exists dynamically
+   */
+  private static async ensureLanguage(languageName: string) {
+    const langCode = languageName.substring(0, 2).toLowerCase();
+    await Language.updateOne(
+      { name: languageName },
+      { $setOnInsert: { name: languageName, code: langCode, enabled: true } },
+      { upsert: true }
+    );
+  }
 
+  /**
+   * Ensure category exists dynamically
+   */
+  private static async ensureCategory(languageName: string, categoryName: string) {
+    await Category.updateOne(
+      { language: languageName, name: categoryName },
+      { $setOnInsert: { language: languageName, name: categoryName, enabled: true } },
+      { upsert: true }
+    );
+  }
+
+  /**
+   * Processes a single RSS feed
+   */
+  public static async processFeed(source: any): Promise<void> {
     try {
-      let xmlData: string;
-      try {
-        const response = await axios.get(rssUrl, {
-          timeout: 10000,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-          }
-        });
-        xmlData = response.data;
-      } catch (err: any) {
-        throw new Error(`Axios fetch failed: ${err.message}`);
-      }
+      // Dynamic entities creation
+      await this.ensureLanguage(source.language);
+      await this.ensureCategory(source.language, source.category);
 
-      let feed: Parser.Output<{ [key: string]: any }>;
-      try {
-        feed = await parser.parseString(xmlData);
-      } catch (err: any) {
-        throw new Error(`XML Parse failed: ${err.message}`);
-      }
+      const feed = await parser.parseURL(source.rssUrl);
+      
+      let newArticlesCount = 0;
 
-      if (!feed.items || feed.items.length === 0) {
-        throw new Error('No items found in feed');
-      }
-
-      const isCurrentAffairs = category.toLowerCase() === 'current-affairs';
-      const isAffairsCloud = sourceName.includes('AffairsCloud');
-
-      // Process only newest 10 items per feed to save DB operations
-      const itemsToProcess = feed.items.slice(0, 10);
-      let articlesImported = 0;
-
-      await this.runWithConcurrency(itemsToProcess, 2, async (item) => {
-        const link = item.link?.trim() || item.guid?.trim();
-        if (!link) return;
-
-        // Clean link
-        const articleLink = link.split('?')[0];
-
-        if (isAffairsCloud) {
-          const splitArticles = await ReadabilityService.extractAffairsCloud(articleLink);
-          if (splitArticles && splitArticles.length > 0) {
-            for (const splitArt of splitArticles) {
-              const duplicateUrl = await Article.findOne({ sourceUrl: splitArt.sourceUrl }).lean();
-              if (duplicateUrl) continue;
-              const duplicateTitle = await Article.findOne({ title: splitArt.title }).lean();
-              if (duplicateTitle) continue;
-
-              let finalCategory = category;
-              const catLower = splitArt.categoryName.toLowerCase();
-              if (catLower.includes('national') || catLower.includes('india')) finalCategory = 'national';
-              else if (catLower.includes('international') || catLower.includes('world')) finalCategory = 'international';
-              else if (catLower.includes('sports')) finalCategory = 'sports';
-              else if (catLower.includes('science') || catLower.includes('technology') || catLower.includes('environment')) finalCategory = 'technology';
-              else if (catLower.includes('banking') || catLower.includes('finance') || catLower.includes('business')) finalCategory = 'business';
-              else if (catLower.includes('economy')) finalCategory = 'economy';
-              else if (catLower.includes('politics')) finalCategory = 'politics';
-
-              const content = splitArt.content.trim() || splitArt.title || 'Content not available';
-              const readingTime = Math.max(1, Math.round(content.split(/\s+/).length / 200));
-              const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
-              
-              const articleId = crypto.randomUUID();
-              await Article.create({
-                id: articleId,
-                title: splitArt.title,
-                content: content,
-                language: language.toLowerCase(),
-                category: finalCategory.toLowerCase(),
-                sourceName: sourceName,
-                sourceUrl: splitArt.sourceUrl,
-                publishedDate: publishedAt.toISOString().split('T')[0],
-                publishedTime: publishedAt.toISOString().split('T')[1].substring(0, 8),
-                readingTime: readingTime,
-                isSaved: false,
-                isActive: true,
-                isCurrentAffairs: isCurrentAffairs
-              });
-              articlesImported++;
-            }
-          }
-          return;
-        }
-
-        // Standard feed handling
-        const title = item.title?.trim() || 'Untitled';
-
-        const duplicateUrl = await Article.findOne({ sourceUrl: articleLink }).lean();
-        if (duplicateUrl) return;
-
-        const duplicateTitle = await Article.findOne({ title: title }).lean();
-        if (duplicateTitle) return;
-
-        let extracted: any = null;
-        try {
-          extracted = await ReadabilityService.extract(link);
-        } catch (err) {
-          logger.warn({ link }, 'Readability extraction failed, falling back to RSS item content');
-        }
+      for (const item of feed.items) {
+        if (!item.link || !item.title) continue;
         
-        let content = '';
-        if (extracted && extracted.content && extracted.content.trim().length > 50) {
-          content = extracted.content;
-        } else {
-          const fallbackCandidates = [
-            item['content:encoded'],
-            item.content,
-            item.description,
-            item.summary,
-            item.contentSnippet
-          ].filter(Boolean)
-           .map((s: string) => s.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').trim())
-           .sort((a: string, b: string) => b.length - a.length);
+        // 1. Duplicate check
+        const exists = await Article.exists({ sourceUrl: item.link });
+        if (exists) continue;
 
-          content = fallbackCandidates.length > 0 ? fallbackCandidates[0] : title;
+        // 2. Fetch HTML
+        let html: string;
+        try {
+          const res = await axios.get(item.link, { timeout: 10000 });
+          html = res.data;
+        } catch (e) {
+          continue; // Skip if website blocks or fails
         }
 
-        if (content.length < 50) return; // Skip incredibly short articles
+        // 3. Extract main content with Mozilla Readability
+        const dom = new JSDOM(html, { url: item.link });
+        const reader = new Readability(dom.window.document);
+        const article = reader.parse();
 
-        const readingTime = Math.max(1, Math.round(content.split(/\s+/).length / 200));
-        const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
+        if (!article || !article.textContent) continue;
 
-        const articleId = crypto.randomUUID();
-        await Article.create({
-          id: articleId,
-          title: title,
-          content: content,
-          language: language.toLowerCase(),
-          category: category.toLowerCase(),
-          sourceName: sourceName,
-          sourceUrl: articleLink,
-          publishedDate: publishedAt.toISOString().split('T')[0],
-          publishedTime: publishedAt.toISOString().split('T')[1].substring(0, 8),
-          readingTime: readingTime,
+        // 4. Clean content and generate summary
+        const cleanedContent = this.cleanContent(article.textContent);
+        const summary = this.generateSummary(cleanedContent);
+
+        // 5. Build and save article
+        const pubDate = item.isoDate ? new Date(item.isoDate) : new Date();
+        const dateStr = pubDate.toISOString().split('T')[0];
+        const timeStr = pubDate.toISOString().split('T')[1].substring(0, 5);
+
+        const newArticle = new Article({
+          title: item.title,
+          summary: summary,
+          content: cleanedContent,
+          language: source.language,
+          category: source.category,
+          sourceName: source.sourceName,
+          sourceUrl: item.link,
+          publishedDate: dateStr,
+          publishedTime: timeStr,
+          readingTime: Math.ceil(cleanedContent.length / 1000) || 1,
+          thumbnail: article.byline || '', // Fallback, could extract proper images later
           isSaved: false,
-          isActive: true,
-          isCurrentAffairs: isCurrentAffairs
+          isActive: true
         });
 
-        articlesImported++;
-      });
-
-      // Update last checked time
-      if (id) {
-        await RssSource.updateOne({ _id: id }, { lastCheckedAt: new Date() });
+        await newArticle.save();
+        newArticlesCount++;
       }
 
+      // Update last checked
+      await RssSource.findByIdAndUpdate(source._id, { lastCheckedAt: new Date() });
+      logger.info(`✓ Feed Sync Success: ${source.sourceName} - Added ${newArticlesCount} articles.`);
+      
     } catch (error: any) {
-      throw new Error(`Sync feed failed: ${error.message}`);
+      logger.error(`⚠ Feed Failed: ${source.sourceName} - ${error.message}`);
     }
+  }
+
+  /**
+   * Syncs all active feeds
+   */
+  public static async syncAllFeeds(): Promise<void> {
+    logger.info('Starting full RSS sync...');
+    const sources = await RssSource.find({ enabled: true }).sort({ priority: -1 }).lean();
+    
+    // Process feeds (batch or parallel could be implemented here, doing sequential for stability right now)
+    for (const source of sources) {
+      await this.processFeed(source);
+    }
+    
+    logger.info('✓ Full RSS sync completed successfully');
   }
 }
