@@ -117,30 +117,46 @@ app.get('/api/v1/search', async (req: Request, res: Response) => {
 
 // --- CURRENT AFFAIRS API ---
 
-// Helper to format current affair response
-const formatCurrentAffair = (doc: any) => ({
-  id: doc._id.toString(),
-  title: doc.title,
-  summary: doc.summary,
-  keyFacts: doc.keyFacts,
-  importantPoints: doc.importantPoints,
-  publishedDate: doc.publishedDate,
-  publishedTime: doc.publishedTime,
-  readingTime: doc.readingTime,
-  content: doc.content
-});
-
-// GET /api/v1/current-affairs — returns ALL current affairs with full data in one shot
+// GET /api/v1/current-affairs
+// Returns a list of daily issues (light card view — no sections/articles payload)
 app.get('/api/v1/current-affairs', async (req: Request, res: Response) => {
   try {
-    const currentAffairs = await CurrentAffair.find({ isActive: true })
-      .sort({ publishedDate: -1, publishedTime: -1, createdAt: -1 })
+    const issues = await CurrentAffair.find()
+      .sort({ issueDate: -1 })
+      .select('issueDate publishedTime totalTopics estimatedReadingTime')
       .lean();
 
-    res.json(currentAffairs.map(formatCurrentAffair));
+    res.json(issues.map((doc: any) => ({
+      id:                   doc._id.toString(),
+      issueDate:            doc.issueDate,
+      publishedTime:        doc.publishedTime,
+      totalTopics:          doc.totalTopics,
+      estimatedReadingTime: doc.estimatedReadingTime,
+    })));
   } catch (error) {
-    logger.error(error, 'Error fetching current affairs');
+    logger.error(error, 'Error fetching current affairs list');
     res.status(500).json({ error: 'Failed to fetch current affairs' });
+  }
+});
+
+// GET /api/v1/current-affairs/:issueDate
+// Returns a full daily issue with all sections and articles (e.g. /api/v1/current-affairs/2026-07-14)
+app.get('/api/v1/current-affairs/:issueDate', async (req: Request, res: Response) => {
+  try {
+    const issue = await CurrentAffair.findOne({ issueDate: req.params.issueDate }).lean() as any;
+    if (!issue) return res.status(404).json({ error: 'Issue not found' });
+
+    res.json({
+      id:                   issue._id.toString(),
+      issueDate:            issue.issueDate,
+      publishedTime:        issue.publishedTime,
+      totalTopics:          issue.totalTopics,
+      estimatedReadingTime: issue.estimatedReadingTime,
+      sections:             issue.sections,
+    });
+  } catch (error) {
+    logger.error(error, 'Error fetching current affairs issue');
+    res.status(500).json({ error: 'Failed to fetch current affairs issue' });
   }
 });
 
@@ -434,9 +450,15 @@ app.get('/', (req: Request, res: Response) => {
           </div>
 
           <div class="endpoint">
-            <span class="badge" style="background: #10b981;">Current Affairs</span>
+            <span class="badge" style="background: #10b981;">Current Affairs — List</span>
             <span class="url">/api/v1/current-affairs</span>
-            <span class="desc">Get all current affairs — full title, summary, key facts &amp; content</span>
+            <span class="desc">List of daily issues (issueDate, totalTopics, reading time)</span>
+          </div>
+
+          <div class="endpoint">
+            <span class="badge" style="background: #10b981;">Current Affairs — Day Detail</span>
+            <span class="url">/api/v1/current-affairs/2026-07-14</span>
+            <span class="desc">Full issue: all sections (NATIONAL AFFAIRS, SPORTS…) with articles &amp; images</span>
           </div>
 
         </div>

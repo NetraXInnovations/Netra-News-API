@@ -1,43 +1,73 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface ICurrentAffair extends Document {
+// ── Article (one topic within a section) ────────────────────────────────────
+export interface IArticle {
   title: string;
+  imageUrl: string;
   summary: string;
   keyFacts: string[];
-  importantPoints: string[];
   content: string;
-  publishedDate: string;
-  publishedTime: string;
-  sourceName: string;
+}
+
+// ── Section (e.g. NATIONAL AFFAIRS, SPORTS, etc.) ───────────────────────────
+export interface ISection {
+  title: string;
+  articles: IArticle[];
+}
+
+// ── Daily issue (one document = one day) ─────────────────────────────────────
+export interface ICurrentAffairIssue extends Document {
+  issueDate: string;            // "2026-07-14"
+  publishedTime: string;        // "01:30"
   sourceUrl: string;
-  readingTime: number;
-  isActive: boolean;
+  totalTopics: number;
+  estimatedReadingTime: number; // minutes
+  sections: ISection[];
   isSaved: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const CurrentAffairSchema: Schema = new Schema(
+// ── Sub-schemas (no _id needed on sub-docs) ──────────────────────────────────
+const ArticleSchema = new Schema<IArticle>(
   {
-    title: { type: String, required: true },
-    summary: { type: String, default: '' },
+    title:    { type: String, required: true },
+    imageUrl: { type: String, default: '' },
+    summary:  { type: String, default: '' },
     keyFacts: [{ type: String }],
-    importantPoints: [{ type: String }],
-    content: { type: String, required: true },
-    publishedDate: { type: String, required: true },
-    publishedTime: { type: String, required: true },
-    sourceName: { type: String, default: 'AffairsCloud' },
-    sourceUrl: { type: String, required: true },
-    readingTime: { type: Number, default: 0 },
-    isActive: { type: Boolean, default: true },
-    isSaved: { type: Boolean, default: false },
+    content:  { type: String, required: true },
+  },
+  { _id: false }
+);
+
+const SectionSchema = new Schema<ISection>(
+  {
+    title:    { type: String, required: true },
+    articles: [ArticleSchema],
+  },
+  { _id: false }
+);
+
+// ── Main schema ──────────────────────────────────────────────────────────────
+const CurrentAffairIssueSchema = new Schema<ICurrentAffairIssue>(
+  {
+    issueDate:            { type: String, required: true, unique: true }, // one doc per day
+    publishedTime:        { type: String, default: '00:00' },
+    sourceUrl:            { type: String, required: true },
+    totalTopics:          { type: Number, default: 0 },
+    estimatedReadingTime: { type: Number, default: 0 },
+    sections:             [SectionSchema],
+    isSaved:              { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
 // Indexes
-CurrentAffairSchema.index({ publishedDate: -1, publishedTime: -1, createdAt: -1 });
-CurrentAffairSchema.index({ sourceUrl: 1 });
-CurrentAffairSchema.index({ title: 'text', content: 'text' });
+CurrentAffairIssueSchema.index({ issueDate: -1 });
+CurrentAffairIssueSchema.index({ createdAt: 1, isSaved: 1 }); // for cleanup
 
-export const CurrentAffair = mongoose.model<ICurrentAffair>('CurrentAffair', CurrentAffairSchema, 'current_affairs');
+export const CurrentAffair = mongoose.model<ICurrentAffairIssue>(
+  'CurrentAffair',
+  CurrentAffairIssueSchema,
+  'current_affairs'
+);
