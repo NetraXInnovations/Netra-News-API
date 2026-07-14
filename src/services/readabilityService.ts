@@ -211,7 +211,7 @@ export class ReadabilityService {
         const isHeadline = blueSpan.length > 0 || tagName === 'h2' || tagName === 'h3' || isQuestion;
 
         if (isHeadline) {
-          let headlineText = blueSpan.length > 0 ? blueSpan.text().trim() : text;
+          let headlineText = text;
           headlineText = headlineText.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
 
           if (headlineText.length > 15 && !headlineText.toLowerCase().includes('click here') && !headlineText.toLowerCase().includes('current affairs')) {
@@ -224,17 +224,10 @@ export class ReadabilityService {
               });
             }
 
-            let initialContent = '';
-            if (blueSpan.length > 0) {
-              const clonedEl = $el.clone();
-              clonedEl.find('span[style*="color: #0000ff"]').remove();
-              initialContent = clonedEl.text().trim();
-            }
-
             currentArticle = {
               title: headlineText,
               categoryName: currentCategory,
-              contentParts: initialContent ? [initialContent] : [],
+              contentParts: [],
               sourceUrl: `${sourceUrl}#${slugify(headlineText)}`
             };
             return;
