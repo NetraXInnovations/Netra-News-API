@@ -302,6 +302,18 @@ app.get('/', (req: Request, res: Response) => {
           </div>
 
           <div class="endpoint">
+            <span class="badge">Bengali Categories</span>
+            <span class="url">/api/v1/categories?language=Bengali</span>
+            <span class="desc">Get all categories for Bengali news</span>
+          </div>
+
+          <div class="endpoint">
+            <span class="badge">Gujarati Categories</span>
+            <span class="url">/api/v1/categories?language=Gujarati</span>
+            <span class="desc">Get all categories for Gujarati news</span>
+          </div>
+
+          <div class="endpoint">
             <span class="badge">English Articles</span>
             <span class="url">/api/v1/articles?language=English</span>
             <span class="desc">Get all English news articles</span>
@@ -341,6 +353,18 @@ app.get('/', (req: Request, res: Response) => {
             <span class="badge">Marathi Articles</span>
             <span class="url">/api/v1/articles?language=Marathi</span>
             <span class="desc">Get all Marathi news articles</span>
+          </div>
+
+          <div class="endpoint">
+            <span class="badge">Bengali Articles</span>
+            <span class="url">/api/v1/articles?language=Bengali</span>
+            <span class="desc">Get all Bengali news articles</span>
+          </div>
+
+          <div class="endpoint">
+            <span class="badge">Gujarati Articles</span>
+            <span class="url">/api/v1/articles?language=Gujarati</span>
+            <span class="desc">Get all Gujarati news articles</span>
           </div>
 
         </div>

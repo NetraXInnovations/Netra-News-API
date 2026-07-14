@@ -75,7 +75,26 @@ const allSources = [
   { sourceName: "Divya Marathi - Entertainment", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-12018.xml", language: "Marathi", category: "मनोरंजन", englishName: "Entertainment", languageCode: "mr" },
   { sourceName: "Divya Marathi - Business", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-5558.xml", language: "Marathi", category: "व्यवसाय", englishName: "Business", languageCode: "mr" },
   { sourceName: "Divya Marathi - Technology & Auto", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-12023.xml", language: "Marathi", category: "तंत्रज्ञान आणि ऑटो", englishName: "Technology & Auto", languageCode: "mr" },
-  { sourceName: "Divya Marathi - Lifestyle", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-12021.xml", language: "Marathi", category: "जीवनशैली", englishName: "Lifestyle", languageCode: "mr" }
+  { sourceName: "Divya Marathi - Lifestyle", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-12021.xml", language: "Marathi", category: "जीवनशैली", englishName: "Lifestyle", languageCode: "mr" },
+
+  // --- BENGALI ---
+  { sourceName: "News18 Bengali - Kolkata", rssUrl: "https://bengali.news18.com/commonfeeds/v1/ben/rss/kolkata.xml", language: "Bengali", category: "কলকাতা", englishName: "Kolkata", languageCode: "bn" },
+  { sourceName: "News18 Bengali - West Bengal", rssUrl: "https://bengali.news18.com/commonfeeds/v1/ben/rss/west-bengal.xml", language: "Bengali", category: "পশ্চিমবঙ্গ", englishName: "West Bengal", languageCode: "bn" },
+  { sourceName: "News18 Bengali - Technology", rssUrl: "https://bengali.news18.com/commonfeeds/v1/ben/rss/technology.xml", language: "Bengali", category: "প্রযুক্তি", englishName: "Technology", languageCode: "bn" },
+  { sourceName: "News18 Bengali - Entertainment", rssUrl: "https://bengali.news18.com/commonfeeds/v1/ben/rss/entertainment.xml", language: "Bengali", category: "বিনোদন", englishName: "Entertainment", languageCode: "bn" },
+  { sourceName: "News18 Bengali - Business", rssUrl: "https://bengali.news18.com/commonfeeds/v1/ben/rss/business.xml", language: "Bengali", category: "ব্যবসা", englishName: "Business", languageCode: "bn" },
+  { sourceName: "News18 Bengali - Politics", rssUrl: "https://bengali.news18.com/commonfeeds/v1/ben/rss/politics.xml", language: "Bengali", category: "রাজনীতি", englishName: "Politics", languageCode: "bn" },
+  { sourceName: "News18 Bengali - Lifestyle", rssUrl: "https://bengali.news18.com/commonfeeds/v1/ben/rss/life-style.xml", language: "Bengali", category: "লাইফস্টাইল", englishName: "Lifestyle", languageCode: "bn" },
+  { sourceName: "News18 Bengali - Education & Career", rssUrl: "https://bengali.news18.com/commonfeeds/v1/ben/rss/education-career.xml", language: "Bengali", category: "শিক্ষা ও ক্যারিয়ার", englishName: "Education & Career", languageCode: "bn" },
+
+  // --- GUJARATI ---
+  { sourceName: "Divya Bhaskar - Gujarat", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-1035.xml", language: "Gujarati", category: "ગુજરાત", englishName: "Gujarat", languageCode: "gu" },
+  { sourceName: "Divya Bhaskar - National", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-1037.xml", language: "Gujarati", category: "રાષ્ટ્રીય", englishName: "National", languageCode: "gu" },
+  { sourceName: "Divya Bhaskar - International", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-1038.xml", language: "Gujarati", category: "આંતરરાષ્ટ્રીય", englishName: "International", languageCode: "gu" },
+  { sourceName: "Divya Bhaskar - Entertainment", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-12018.xml", language: "Gujarati", category: "મનોરંજન", englishName: "Entertainment", languageCode: "gu" },
+  { sourceName: "Divya Bhaskar - Lifestyle", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-5029.xml", language: "Gujarati", category: "જીવનશૈલી", englishName: "Lifestyle", languageCode: "gu" },
+  { sourceName: "Divya Bhaskar - Business", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-969.xml", language: "Gujarati", category: "વ્યવસાય", englishName: "Business", languageCode: "gu" },
+  { sourceName: "Divya Bhaskar - Sports", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-970.xml", language: "Gujarati", category: "રમતગમત", englishName: "Sports", languageCode: "gu" }
 ];
 
 async function seedMasterPrompt() {
