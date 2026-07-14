@@ -3,6 +3,7 @@ import { logger } from './config/logger';
 import { RssIngestionService } from './services/rssIngestionService';
 import { CleanupService } from './services/cleanupService';
 import { connectDB } from './db/db';
+import { AffairsCloudParser } from './services/affairsCloudParser';
 
 // --- GLOBAL ERROR HANDLING ---
 process.on('uncaughtException', (err: Error) => {
@@ -29,7 +30,11 @@ async function startServer() {
       logger.info('✓ RSS Engine Started');
       RssIngestionService.syncAllFeeds().catch((err: any) => logger.error({ error: err.message }, '⚠ Initial startup RSS sync failed (continue)'));
 
-      // 4. Start Cleanup Scheduler
+      // 4. Start AffairsCloud Sync
+      logger.info('✓ AffairsCloud Engine Started');
+      AffairsCloudParser.syncAffairsCloud().catch((err: any) => logger.error({ error: err.message }, '⚠ Initial startup AffairsCloud sync failed (continue)'));
+
+      // 5. Start Cleanup Scheduler
       logger.info('✓ Cleanup Scheduler Started');
       CleanupService.runCleanup().catch((err: any) => logger.error({ error: err.message }, '⚠ Initial startup database cleanup failed (continue)'));
 
@@ -38,6 +43,11 @@ async function startServer() {
         logger.info('Running scheduled background RSS sync...');
         RssIngestionService.syncAllFeeds().catch((err: any) => logger.error({ error: err.message }, '⚠ Background RSS sync failed (continue)'));
       }, 2 * 60 * 1000); // Check every 2 minutes for instant updates!
+
+      const affairsCloudInterval = setInterval(() => {
+        logger.info('Running scheduled background AffairsCloud sync...');
+        AffairsCloudParser.syncAffairsCloud().catch((err: any) => logger.error({ error: err.message }, '⚠ Background AffairsCloud sync failed (continue)'));
+      }, 5 * 60 * 1000); // Check every 5 minutes
 
       const cleanupInterval = setInterval(() => {
         logger.info('Running scheduled background database cleanup...');
@@ -48,6 +58,7 @@ async function startServer() {
       const shutdown = (signal: string) => {
         logger.info(`Received ${signal}. Shutting down gracefully...`);
         clearInterval(syncInterval);
+        clearInterval(affairsCloudInterval);
         clearInterval(cleanupInterval);
         server.close(() => {
           logger.info('HTTP server closed.');
@@ -65,6 +76,7 @@ async function startServer() {
       process.once('SIGUSR2', () => {
         logger.info('Nodemon restart signal received. Closing port...');
         clearInterval(syncInterval);
+        clearInterval(affairsCloudInterval);
         clearInterval(cleanupInterval);
         server.close(() => {
           logger.info('HTTP server closed for restart.');

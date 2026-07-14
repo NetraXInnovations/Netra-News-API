@@ -1,4 +1,5 @@
 import { Article } from '../models/Article';
+import { CurrentAffair } from '../models/CurrentAffair';
 import { logger } from '../config/logger';
 
 export class CleanupService {
@@ -17,7 +18,12 @@ export class CleanupService {
         isSaved: false
       });
 
-      logger.info(`✓ Database Cleanup completed. Deleted ${result.deletedCount} old, unsaved articles.`);
+      const caResult = await CurrentAffair.deleteMany({
+        createdAt: { $lt: oneDayAgo },
+        isSaved: false
+      });
+
+      logger.info(`✓ Database Cleanup completed. Deleted ${result.deletedCount} old articles and ${caResult.deletedCount} old current affairs.`);
     } catch (error: any) {
       logger.error({ error: error.message }, '⚠ Database cleanup failed');
     }

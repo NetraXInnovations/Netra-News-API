@@ -8,6 +8,8 @@ import { Language } from './models/Language';
 import { Category } from './models/Category';
 import { Article } from './models/Article';
 import { SavedArticle } from './models/SavedArticle';
+import { CurrentAffair } from './models/CurrentAffair';
+import { AffairsCloudParser } from './services/affairsCloudParser';
 
 const app = express();
 
@@ -110,6 +112,42 @@ app.get('/api/v1/search', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error(error, 'Error searching articles');
     res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+// --- CURRENT AFFAIRS API ---
+
+// Helper to format current affair response
+const formatCurrentAffair = (doc: any) => ({
+  id: doc._id.toString(),
+  title: doc.title,
+  publishedDate: doc.publishedDate,
+  publishedTime: doc.publishedTime,
+  content: doc.content
+});
+
+// GET /api/v1/current-affairs
+app.get('/api/v1/current-affairs', async (req: Request, res: Response) => {
+  try {
+    const currentAffairs = await CurrentAffair.find({ isActive: true })
+      .sort({ publishedDate: -1, publishedTime: -1, createdAt: -1 })
+      .lean();
+
+    res.json(currentAffairs.map(formatCurrentAffair));
+  } catch (error) {
+    logger.error(error, 'Error fetching current affairs');
+    res.status(500).json({ error: 'Failed to fetch current affairs' });
+  }
+});
+
+
+// POST /jobs/sync-current-affairs
+app.post('/jobs/sync-current-affairs', async (req: Request, res: Response) => {
+  try {
+    res.json({ message: 'AffairsCloud Current Affairs sync triggered' });
+    AffairsCloudParser.syncAffairsCloud().catch((err: any) => logger.error({ error: err.message }, '⚠ Triggered AffairsCloud sync failed'));
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to trigger sync' });
   }
 });
 
