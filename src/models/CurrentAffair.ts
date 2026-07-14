@@ -1,36 +1,43 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ICurrentAffair extends Document {
   title: string;
+  summary: string;
+  keyFacts: string[];
+  importantPoints: string[];
   content: string;
   publishedDate: string;
   publishedTime: string;
-  sourceUrl: string;
   sourceName: string;
+  sourceUrl: string;
   readingTime: number;
-  isSaved: boolean;
   isActive: boolean;
+  isSaved: boolean;
   createdAt: Date;
+  updatedAt: Date;
 }
 
-const CurrentAffairSchema: Schema = new Schema({
-  title: { type: String, required: true },
-  content: { type: String, required: true },
-  publishedDate: { type: String, required: true },
-  publishedTime: { type: String, required: true },
-  sourceUrl: { type: String, required: true },
-  sourceName: { type: String, required: true, default: 'AffairsCloud' },
-  readingTime: { type: Number, required: true },
-  isSaved: { type: Boolean, default: false },
-  isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
-});
+const CurrentAffairSchema: Schema = new Schema(
+  {
+    title: { type: String, required: true },
+    summary: { type: String, default: '' },
+    keyFacts: [{ type: String }],
+    importantPoints: [{ type: String }],
+    content: { type: String, required: true },
+    publishedDate: { type: String, required: true },
+    publishedTime: { type: String, required: true },
+    sourceName: { type: String, default: 'AffairsCloud' },
+    sourceUrl: { type: String, required: true },
+    readingTime: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true },
+    isSaved: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
 
-// Compound index for uniqueness
-CurrentAffairSchema.index({ title: 1, sourceUrl: 1 }, { unique: true });
-
-// Text index for search
+// Indexes
+CurrentAffairSchema.index({ publishedDate: -1, publishedTime: -1, createdAt: -1 });
+CurrentAffairSchema.index({ sourceUrl: 1 });
 CurrentAffairSchema.index({ title: 'text', content: 'text' });
-CurrentAffairSchema.index({ createdAt: -1 });
 
 export const CurrentAffair = mongoose.model<ICurrentAffair>('CurrentAffair', CurrentAffairSchema, 'current_affairs');

@@ -121,22 +121,44 @@ app.get('/api/v1/search', async (req: Request, res: Response) => {
 const formatCurrentAffair = (doc: any) => ({
   id: doc._id.toString(),
   title: doc.title,
+  summary: doc.summary,
+  keyFacts: doc.keyFacts,
+  importantPoints: doc.importantPoints,
   publishedDate: doc.publishedDate,
   publishedTime: doc.publishedTime,
+  readingTime: doc.readingTime,
   content: doc.content
 });
 
 // GET /api/v1/current-affairs
 app.get('/api/v1/current-affairs', async (req: Request, res: Response) => {
   try {
+    const { page = '1', limit = '20' } = req.query;
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 20));
+
     const currentAffairs = await CurrentAffair.find({ isActive: true })
       .sort({ publishedDate: -1, publishedTime: -1, createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
       .lean();
 
     res.json(currentAffairs.map(formatCurrentAffair));
   } catch (error) {
     logger.error(error, 'Error fetching current affairs');
     res.status(500).json({ error: 'Failed to fetch current affairs' });
+  }
+});
+
+// GET /api/v1/current-affairs/:id
+app.get('/api/v1/current-affairs/:id', async (req: Request, res: Response) => {
+  try {
+    const affair = await CurrentAffair.findById(req.params.id).lean();
+    if (!affair) return res.status(404).json({ error: 'Current affair not found' });
+    res.json(formatCurrentAffair(affair));
+  } catch (error) {
+    logger.error(error, 'Error fetching current affair');
+    res.status(500).json({ error: 'Failed to fetch current affair' });
   }
 });
 
@@ -431,8 +453,14 @@ app.get('/', (req: Request, res: Response) => {
 
           <div class="endpoint">
             <span class="badge" style="background: #10b981;">Current Affairs</span>
-            <span class="url">/api/v1/current-affairs</span>
-            <span class="desc">Get all recent AffairsCloud current affairs topics</span>
+            <span class="url">/api/v1/current-affairs?page=1&amp;limit=20</span>
+            <span class="desc">Get paginated AffairsCloud current affairs topics</span>
+          </div>
+
+          <div class="endpoint">
+            <span class="badge" style="background: #10b981;">Current Affair Detail</span>
+            <span class="url">/api/v1/current-affairs/:id</span>
+            <span class="desc">Get full structured current affair by ID</span>
           </div>
 
         </div>
