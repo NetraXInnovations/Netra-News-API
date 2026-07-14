@@ -429,6 +429,12 @@ app.get('/', (req: Request, res: Response) => {
             <span class="desc">Get all Urdu news articles</span>
           </div>
 
+          <div class="endpoint">
+            <span class="badge" style="background: #10b981;">Current Affairs</span>
+            <span class="url">/api/v1/current-affairs</span>
+            <span class="desc">Get all recent AffairsCloud current affairs topics</span>
+          </div>
+
         </div>
       </div>
     </body>
