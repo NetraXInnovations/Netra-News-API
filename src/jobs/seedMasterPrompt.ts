@@ -56,7 +56,16 @@ const allSources = [
   { sourceName: "News18 Kannada - Health", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/lifestyle/health.xml", language: "Kannada", category: "ಆರೋಗ್ಯ", englishName: "Health", languageCode: "kn" },
   { sourceName: "News18 Kannada - Education", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/jobs/education.xml", language: "Kannada", category: "ಶಿಕ್ಷಣ", englishName: "Education", languageCode: "kn" },
   { sourceName: "News18 Kannada - Technology", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/tech-trend.xml", language: "Kannada", category: "ತಂತ್ರಜ್ಞಾನ", englishName: "Technology", languageCode: "kn" },
-  { sourceName: "News18 Kannada - Entertainment", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/entertainment.xml", language: "Kannada", category: "ಮನರಂಜನೆ", englishName: "Entertainment", languageCode: "kn" }
+  { sourceName: "News18 Kannada - Entertainment", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/entertainment.xml", language: "Kannada", category: "ಮನರಂಜನೆ", englishName: "Entertainment", languageCode: "kn" },
+
+  // --- MALAYALAM ---
+  { sourceName: "News18 Malayalam - India", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/india.xml", language: "Malayalam", category: "ഇന്ത്യ", englishName: "India", languageCode: "ml" },
+  { sourceName: "News18 Malayalam - World", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/world.xml", language: "Malayalam", category: "ലോകം", englishName: "World", languageCode: "ml" },
+  { sourceName: "News18 Malayalam - Sports", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/sports.xml", language: "Malayalam", category: "കായികം", englishName: "Sports", languageCode: "ml" },
+  { sourceName: "News18 Malayalam - Kerala", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/kerala.xml", language: "Malayalam", category: "കേരളം", englishName: "Kerala", languageCode: "ml" },
+  { sourceName: "News18 Malayalam - Technology", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/money/tech.xml", language: "Malayalam", category: "സാങ്കേതികവിദ്യ", englishName: "Technology", languageCode: "ml" },
+  { sourceName: "News18 Malayalam - Health", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/life/health.xml", language: "Malayalam", category: "ആരോഗ്യം", englishName: "Health", languageCode: "ml" },
+  { sourceName: "News18 Malayalam - Lifestyle", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/life.xml", language: "Malayalam", category: "ജീവിതശൈലി", englishName: "Lifestyle", languageCode: "ml" }
 ];
 
 async function seedMasterPrompt() {

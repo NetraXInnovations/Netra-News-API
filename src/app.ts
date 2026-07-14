@@ -290,6 +290,12 @@ app.get('/', (req: Request, res: Response) => {
           </div>
 
           <div class="endpoint">
+            <span class="badge">Malayalam Categories</span>
+            <span class="url">/api/v1/categories?language=Malayalam</span>
+            <span class="desc">Get all categories for Malayalam news</span>
+          </div>
+
+          <div class="endpoint">
             <span class="badge">English Articles</span>
             <span class="url">/api/v1/articles?language=English</span>
             <span class="desc">Get all English news articles</span>
@@ -317,6 +323,12 @@ app.get('/', (req: Request, res: Response) => {
             <span class="badge">Kannada Articles</span>
             <span class="url">/api/v1/articles?language=Kannada</span>
             <span class="desc">Get all Kannada news articles</span>
+          </div>
+
+          <div class="endpoint">
+            <span class="badge">Malayalam Articles</span>
+            <span class="url">/api/v1/articles?language=Malayalam</span>
+            <span class="desc">Get all Malayalam news articles</span>
           </div>
 
         </div>
