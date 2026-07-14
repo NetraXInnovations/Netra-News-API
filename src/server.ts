@@ -37,7 +37,7 @@ async function startServer() {
       const syncInterval = setInterval(() => {
         logger.info('Running scheduled background RSS sync...');
         RssIngestionService.syncAllFeeds().catch((err: any) => logger.error({ error: err.message }, '⚠ Background RSS sync failed (continue)'));
-      }, 15 * 60 * 1000); // Back to 15 minutes because MongoDB has no strict quota!
+      }, 2 * 60 * 1000); // Check every 2 minutes for instant updates!
 
       const cleanupInterval = setInterval(() => {
         logger.info('Running scheduled background database cleanup...');

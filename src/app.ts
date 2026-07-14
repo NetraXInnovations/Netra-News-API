@@ -68,7 +68,7 @@ app.get('/api/v1/articles', async (req: Request, res: Response) => {
     if (category) query.category = category;
 
     const articles = await Article.find(query)
-      .sort({ createdAt: -1 })
+      .sort({ publishedDate: -1, publishedTime: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
       .lean();
