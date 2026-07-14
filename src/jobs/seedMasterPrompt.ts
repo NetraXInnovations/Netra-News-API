@@ -104,7 +104,15 @@ const allSources = [
   { sourceName: "News18 Punjabi - Technology", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/technology.xml", language: "Punjabi", category: "ਤਕਨਾਲੋਜੀ", englishName: "Technology", languageCode: "pa" },
   { sourceName: "News18 Punjabi - Sports", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/sports.xml", language: "Punjabi", category: "ਖੇਡਾਂ", englishName: "Sports", languageCode: "pa" },
   { sourceName: "News18 Punjabi - Health", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/health.xml", language: "Punjabi", category: "ਸਿਹਤ", englishName: "Health", languageCode: "pa" },
-  { sourceName: "News18 Punjabi - Lifestyle", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/lifestyle.xml", language: "Punjabi", category: "ਜੀਵਨ ਸ਼ੈਲੀ", englishName: "Lifestyle", languageCode: "pa" }
+  { sourceName: "News18 Punjabi - Lifestyle", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/lifestyle.xml", language: "Punjabi", category: "ਜੀਵਨ ਸ਼ੈਲੀ", englishName: "Lifestyle", languageCode: "pa" },
+
+  // --- URDU ---
+  { sourceName: "Qaumi Awaz Urdu - National", rssUrl: "https://www.qaumiawaz.com/stories.rss?section=national", language: "Urdu", category: "قومی", englishName: "National", languageCode: "ur" },
+  { sourceName: "Qaumi Awaz Urdu - International", rssUrl: "https://www.qaumiawaz.com/stories.rss?section=international", language: "Urdu", category: "بین الاقوامی", englishName: "International", languageCode: "ur" },
+  { sourceName: "News18 Urdu - Trending", rssUrl: "https://urdu.news18.com/commonfeeds/v1/urd/rss/trending.xml", language: "Urdu", category: "ٹرینڈنگ", englishName: "Trending", languageCode: "ur" },
+  { sourceName: "News18 Urdu - Sports", rssUrl: "https://urdu.news18.com/commonfeeds/v1/urd/rss/sports.xml", language: "Urdu", category: "کھیل", englishName: "Sports", languageCode: "ur" },
+  { sourceName: "News18 Urdu - Entertainment", rssUrl: "https://urdu.news18.com/commonfeeds/v1/urd/rss/entertainment.xml", language: "Urdu", category: "تفریح", englishName: "Entertainment", languageCode: "ur" },
+  { sourceName: "News18 Urdu - Economy", rssUrl: "https://urdu.news18.com/commonfeeds/v1/urd/rss/money.xml", language: "Urdu", category: "معیشت", englishName: "Economy", languageCode: "ur" }
 ];
 
 async function seedMasterPrompt() {
