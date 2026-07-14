@@ -19,32 +19,45 @@ const parser = new Parser({
 
 export class RssIngestionService {
   /**
-   * Cleans text to produce proper HTML paragraphs, removing raw newlines.
+   * Cleans HTML from the full extracted article but preserves basic \n\n paragraphs.
    */
   private static cleanContent(htmlContent: string): string {
     const $ = cheerio.load(htmlContent);
     let text = $('body').text();
     
-    // Remove unwanted chars and normalize spacing
-    text = text.replace(/\\n/g, '\n').replace(/\\t/g, '').replace(/\r/g, '');
+    // Remove literal string escapes and normalize spacing
+    text = text.replace(/\\n/g, '\n').replace(/\\t/g, '').replace(/\\r/g, '').replace(/\r/g, '');
     
     // Split into paragraphs by newlines
     const paragraphs = text
       .split('\n')
       .map(p => p.trim())
-      .filter(p => p.length > 0)
-      .map(p => `<p>${p}</p>`);
+      .filter(p => p.length > 0);
       
+    // Join strictly with actual \n\n, no HTML tags
     return paragraphs.join('\n\n');
   }
 
   /**
-   * Creates a simple summary from the cleaned content.
+   * Cleans HTML from the RSS description tag, preserving paragraphs and stripping tags.
    */
-  private static generateSummary(cleanedContent: string): string {
-    const $ = cheerio.load(cleanedContent);
-    const plainText = $.text();
-    return plainText.length > 150 ? plainText.substring(0, 150) + '...' : plainText;
+  private static cleanDescription(htmlContent: string): string | null {
+    if (!htmlContent) return null;
+    const $ = cheerio.load(htmlContent);
+    
+    // Replace common line breaks with newlines before calling text()
+    $('br').replaceWith('\n');
+    $('p').append('\n\n');
+    
+    let plainText = $.text();
+    plainText = plainText.replace(/\\n/g, '\n').replace(/\\t/g, '').replace(/\\r/g, '').replace(/\r/g, '');
+    
+    const paragraphs = plainText
+      .split('\n')
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
+      
+    return paragraphs.length > 0 ? paragraphs.join('\n\n') : null;
   }
 
   /**
@@ -106,9 +119,9 @@ export class RssIngestionService {
 
         if (!article || !article.textContent) continue;
 
-        // 4. Clean content and generate summary
+        // 4. Clean content and extract description
         const cleanedContent = this.cleanContent(article.textContent);
-        const summary = this.generateSummary(cleanedContent);
+        const description = this.cleanDescription(item.description || '');
 
         // 5. Build and save article
         const pubDate = item.isoDate ? new Date(item.isoDate) : new Date();
@@ -117,7 +130,7 @@ export class RssIngestionService {
 
         const newArticle = new Article({
           title: item.title,
-          summary: summary,
+          description: description,
           content: cleanedContent,
           language: source.language,
           category: source.category,

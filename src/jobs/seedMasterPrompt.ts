@@ -65,7 +65,17 @@ const allSources = [
   { sourceName: "News18 Malayalam - Kerala", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/kerala.xml", language: "Malayalam", category: "കേരളം", englishName: "Kerala", languageCode: "ml" },
   { sourceName: "News18 Malayalam - Technology", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/money/tech.xml", language: "Malayalam", category: "സാങ്കേതികവിദ്യ", englishName: "Technology", languageCode: "ml" },
   { sourceName: "News18 Malayalam - Health", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/life/health.xml", language: "Malayalam", category: "ആരോഗ്യം", englishName: "Health", languageCode: "ml" },
-  { sourceName: "News18 Malayalam - Lifestyle", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/life.xml", language: "Malayalam", category: "ജീവിതശൈലി", englishName: "Lifestyle", languageCode: "ml" }
+  { sourceName: "News18 Malayalam - Lifestyle", rssUrl: "https://malayalam.news18.com/commonfeeds/v1/mal/rss/life.xml", language: "Malayalam", category: "ജീവിതശൈലി", englishName: "Lifestyle", languageCode: "ml" },
+
+  // --- MARATHI ---
+  { sourceName: "Divya Marathi - Maharashtra", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-5492.xml", language: "Marathi", category: "महाराष्ट्र", englishName: "Maharashtra", languageCode: "mr" },
+  { sourceName: "Divya Marathi - National", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-5489.xml", language: "Marathi", category: "राष्ट्रीय", englishName: "National", languageCode: "mr" },
+  { sourceName: "Divya Marathi - International", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-5490.xml", language: "Marathi", category: "आंतरराष्ट्रीय", englishName: "International", languageCode: "mr" },
+  { sourceName: "Divya Marathi - Sports", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-5491.xml", language: "Marathi", category: "क्रीडा", englishName: "Sports", languageCode: "mr" },
+  { sourceName: "Divya Marathi - Entertainment", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-12018.xml", language: "Marathi", category: "मनोरंजन", englishName: "Entertainment", languageCode: "mr" },
+  { sourceName: "Divya Marathi - Business", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-5558.xml", language: "Marathi", category: "व्यवसाय", englishName: "Business", languageCode: "mr" },
+  { sourceName: "Divya Marathi - Technology & Auto", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-12023.xml", language: "Marathi", category: "तंत्रज्ञान आणि ऑटो", englishName: "Technology & Auto", languageCode: "mr" },
+  { sourceName: "Divya Marathi - Lifestyle", rssUrl: "https://divyamarathi.bhaskar.com/rss-v1--category-12021.xml", language: "Marathi", category: "जीवनशैली", englishName: "Lifestyle", languageCode: "mr" }
 ];
 
 async function seedMasterPrompt() {

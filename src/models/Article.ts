@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IArticle extends Document {
   title: string;
-  summary: string;
+  description: string | null;
   content: string;
   language: string;
   category: string;
@@ -20,7 +20,7 @@ export interface IArticle extends Document {
 
 const ArticleSchema = new Schema<IArticle>({
   title: { type: String, required: true },
-  summary: { type: String, required: true },
+  description: { type: String, default: null },
   content: { type: String, required: true },
   language: { type: String, required: true, index: true },
   category: { type: String, required: true, index: true },
