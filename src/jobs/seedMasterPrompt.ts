@@ -94,7 +94,17 @@ const allSources = [
   { sourceName: "Divya Bhaskar - Entertainment", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-12018.xml", language: "Gujarati", category: "મનોરંજન", englishName: "Entertainment", languageCode: "gu" },
   { sourceName: "Divya Bhaskar - Lifestyle", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-5029.xml", language: "Gujarati", category: "જીવનશૈલી", englishName: "Lifestyle", languageCode: "gu" },
   { sourceName: "Divya Bhaskar - Business", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-969.xml", language: "Gujarati", category: "વ્યવસાય", englishName: "Business", languageCode: "gu" },
-  { sourceName: "Divya Bhaskar - Sports", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-970.xml", language: "Gujarati", category: "રમતગમત", englishName: "Sports", languageCode: "gu" }
+  { sourceName: "Divya Bhaskar - Sports", rssUrl: "https://www.divyabhaskar.co.in/rss-v1--category-970.xml", language: "Gujarati", category: "રમતગમત", englishName: "Sports", languageCode: "gu" },
+
+  // --- PUNJABI ---
+  { sourceName: "News18 Punjabi - Punjab", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/punjab.xml", language: "Punjabi", category: "ਪੰਜਾਬ", englishName: "Punjab", languageCode: "pa" },
+  { sourceName: "News18 Punjabi - National", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/national.xml", language: "Punjabi", category: "ਰਾਸ਼ਟਰੀ", englishName: "National", languageCode: "pa" },
+  { sourceName: "News18 Punjabi - World", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/international.xml", language: "Punjabi", category: "ਵਿਸ਼ਵ", englishName: "World", languageCode: "pa" },
+  { sourceName: "News18 Punjabi - Business", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/business.xml", language: "Punjabi", category: "ਕਾਰੋਬਾਰ", englishName: "Business", languageCode: "pa" },
+  { sourceName: "News18 Punjabi - Technology", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/technology.xml", language: "Punjabi", category: "ਤਕਨਾਲੋਜੀ", englishName: "Technology", languageCode: "pa" },
+  { sourceName: "News18 Punjabi - Sports", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/sports.xml", language: "Punjabi", category: "ਖੇਡਾਂ", englishName: "Sports", languageCode: "pa" },
+  { sourceName: "News18 Punjabi - Health", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/health.xml", language: "Punjabi", category: "ਸਿਹਤ", englishName: "Health", languageCode: "pa" },
+  { sourceName: "News18 Punjabi - Lifestyle", rssUrl: "https://punjab.news18.com/commonfeeds/v1/pan/rss/lifestyle.xml", language: "Punjabi", category: "ਜੀਵਨ ਸ਼ੈਲੀ", englishName: "Lifestyle", languageCode: "pa" }
 ];
 
 async function seedMasterPrompt() {
