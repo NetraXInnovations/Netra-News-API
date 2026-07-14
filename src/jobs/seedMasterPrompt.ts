@@ -51,7 +51,7 @@ const allSources = [
 
   // --- KANNADA ---
   { sourceName: "News18 Kannada - Sports", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/sports.xml", language: "Kannada", category: "ಕ್ರೀಡೆ", englishName: "Sports", languageCode: "kn" },
-  { sourceName: "News18 Kannada - Cricket", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/cricket-2.xml", language: "Kannada", category: "ಕ್ರಿಕೆಟ್", englishName: "Cricket", languageCode: "kn" },
+  { sourceName: "News18 Kannada - Cricket", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/sports/cricket.xml", language: "Kannada", category: "ಕ್ರಿಕೆಟ್", englishName: "Cricket", languageCode: "kn" },
   { sourceName: "News18 Kannada - Business", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/business.xml", language: "Kannada", category: "ವ್ಯವಹಾರ", englishName: "Business", languageCode: "kn" },
   { sourceName: "News18 Kannada - Health", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/lifestyle/health.xml", language: "Kannada", category: "ಆರೋಗ್ಯ", englishName: "Health", languageCode: "kn" },
   { sourceName: "News18 Kannada - Education", rssUrl: "https://kannada.news18.com/commonfeeds/v1/kan/rss/jobs/education.xml", language: "Kannada", category: "ಶಿಕ್ಷಣ", englishName: "Education", languageCode: "kn" },
