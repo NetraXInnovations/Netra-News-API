@@ -42,7 +42,7 @@ async function startServer() {
       const syncInterval = setInterval(() => {
         logger.info('Running scheduled background RSS sync...');
         RssIngestionService.syncAllFeeds().catch((err: any) => logger.error({ error: err.message }, '⚠ Background RSS sync failed (continue)'));
-      }, 2 * 60 * 1000); // Check every 2 minutes for instant updates!
+      }, 10 * 60 * 1000); // Check exactly every 10 minutes
 
       const affairsCloudInterval = setInterval(() => {
         logger.info('Running scheduled background AffairsCloud sync...');

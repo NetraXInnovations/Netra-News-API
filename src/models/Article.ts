@@ -41,4 +41,11 @@ ArticleSchema.index(
   { language_override: 'dummy' }
 );
 
+// Native MongoDB TTL Index: Auto-delete documents 24 hours (86400 seconds) after createdAt
+// The partialFilterExpression ensures that articles saved by users (isSaved: true) are NOT deleted.
+ArticleSchema.index(
+  { createdAt: 1 }, 
+  { expireAfterSeconds: 86400, partialFilterExpression: { isSaved: false } }
+);
+
 export const Article = mongoose.model<IArticle>('Article', ArticleSchema);

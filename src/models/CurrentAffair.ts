@@ -64,7 +64,13 @@ const CurrentAffairIssueSchema = new Schema<ICurrentAffairIssue>(
 
 // Indexes
 CurrentAffairIssueSchema.index({ issueDate: -1 });
-CurrentAffairIssueSchema.index({ createdAt: 1, isSaved: 1 }); // for cleanup
+
+// Native MongoDB TTL Index: Auto-delete documents 24 hours (86400 seconds) after createdAt
+// The partialFilterExpression ensures that items saved by users (isSaved: true) are NOT deleted.
+CurrentAffairIssueSchema.index(
+  { createdAt: 1 }, 
+  { expireAfterSeconds: 86400, partialFilterExpression: { isSaved: false } }
+);
 
 export const CurrentAffair = mongoose.model<ICurrentAffairIssue>(
   'CurrentAffair',
