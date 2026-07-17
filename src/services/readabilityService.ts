@@ -70,12 +70,18 @@ export class ReadabilityService {
       const parsedArticle = reader.parse();
 
       let finalContent = '';
-      let finalTitle = $('title').text() || $('h1').first().text() || '';
+      let finalTitle = $('meta[property="og:title"]').attr('content') || 
+                       $('meta[name="twitter:title"]').attr('content') ||
+                       $('h1').first().text() || 
+                       $('title').text() || 
+                       '';
 
       if (parsedArticle && parsedArticle.content) {
         // Use parsedArticle.content (HTML) to preserve structural paragraphs and lists
         finalContent = this.convertHtmlToFormattedText(parsedArticle.content);
-        finalTitle = parsedArticle.title || finalTitle;
+        if (!finalTitle || finalTitle.length < 10) {
+          finalTitle = parsedArticle.title || finalTitle;
+        }
       } else {
         // Fallback multi-selector strategy
         logger.warn({ url: sourceUrl }, 'Mozilla Readability failed — trying multi-selector fallback');
