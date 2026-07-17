@@ -51,8 +51,8 @@ app.get('/api/v1/categories', async (req: Request, res: Response) => {
     }
     const cats = await Category.find({ language: language as string, enabled: true }).sort({ name: 1 }).lean();
     
-    // Return both native name and englishName so the client can display properly
-    res.json(cats.map(c => ({ name: c.name, englishName: c.englishName || c.name })));
+    // Return ONLY the native name as requested by the user
+    res.json(cats.map(c => ({ name: c.name })));
   } catch (error) {
     logger.error(error, 'Error fetching categories');
     res.status(500).json({ error: 'Failed to fetch categories' });
@@ -68,23 +68,7 @@ app.get('/api/v1/articles', async (req: Request, res: Response) => {
     
     const query: any = { isActive: true };
     if (language) query.language = language;
-
-    // Support category filtering by either native name OR englishName.
-    // If the passed category matches an englishName in the DB for that language,
-    // resolve it to the stored native-script category name first.
-    if (category) {
-      if (language) {
-        // Try to find a Category where englishName matches the requested category (case-insensitive)
-        const resolvedCat = await Category.findOne({
-          language: language as string,
-          englishName: { $regex: new RegExp(`^${(category as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
-        }).lean();
-        // Use native name if resolved, otherwise use as-is (direct native name query)
-        query.category = resolvedCat ? resolvedCat.name : category;
-      } else {
-        query.category = category;
-      }
-    }
+    if (category) query.category = category;
 
     const articles = await Article.find(query)
       .sort({ publishedDate: -1, publishedTime: -1 })
