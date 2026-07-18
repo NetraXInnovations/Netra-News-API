@@ -19,28 +19,70 @@ app.use(cors());
 app.use(compression());
 app.use(express.json());
 
-// Cleans stored content at response time to remove all boilerplate
+// Cleans stored content at response time — Regex + Line filter (covers all languages)
 const cleanStoredContent = (text: string): string => {
   if (!text) return '';
-  const lines = text.split('\n');
-  const cleaned = lines.filter(line => {
-    const l = line.trim().toLowerCase();
-    if (!l) return false;
-    if (l.startsWith('reported by') || l.startsWith('• reported by') || l.startsWith('published by') || l.startsWith('• published by')) return false;
-    if (l.startsWith('edited by') || l.startsWith('written by') || l.startsWith('• edited by')) return false;
-    if (l.startsWith('last updated') || l.startsWith('first published') || l.startsWith('• last updated')) return false;
+
+  // === REGEX pass — remove inline boilerplate patterns ===
+  const BOILERPLATE_REGEXES = [
+    /•?\s*reported\s*by\s*:?\s*.{0,80}/gi,
+    /•?\s*published\s*by\s*:?\s*.{0,80}/gi,
+    /•?\s*edited\s*by\s*:?\s*.{0,80}/gi,
+    /•?\s*written\s*by\s*:?\s*.{0,80}/gi,
+    /•?\s*local18\s*/gi,
+    /last\s*updated\s*:?\s*.{0,100}/gi,
+    /first\s*published\s*:?\s*.{0,100}/gi,
+    /published\s*[-–]\s*.{0,100}ist/gi,
+    /updated\s*[-–]\s*.{0,100}ist/gi,
+    /location\s*:\s*\n?.{0,100}/gi,
+    /photo\s*credit\s*:?\s*.{0,80}/gi,
+    /image\s*credit\s*:?\s*.{0,80}/gi,
+    /image\s*source\s*:?\s*.{0,80}/gi,
+    /\d{1,2}:\d{2}\s*(am|pm)\s*ist/gi,
+    /[a-z]+ \d{1,2}, \d{4} \d{1,2}:\d{2} (am|pm) ist/gi,
+  ];
+
+  let cleaned = text;
+  for (const re of BOILERPLATE_REGEXES) {
+    cleaned = cleaned.replace(re, '');
+  }
+
+  // === LINE-BY-LINE pass ===
+  const lines = cleaned.split('\n').map(l => l.trim()).filter(line => {
+    if (!line) return false;
+    const l = line.toLowerCase();
+
+    if (l.startsWith('reported by') || l.startsWith('• reported by')) return false;
+    if (l.startsWith('published by') || l.startsWith('• published by')) return false;
+    if (l.startsWith('edited by') || l.startsWith('written by')) return false;
+    if (l.startsWith('last updated') || l.startsWith('first published')) return false;
     if (l.startsWith('location :') || l.startsWith('location:')) return false;
     if (l.startsWith('photo credit') || l.startsWith('image credit') || l.startsWith('image source')) return false;
+    if (l === 'local18' || l === 'news18' || l === '+' || l === '•') return false;
+
+    // All language breadcrumbs
     if (l.includes('వార్తలు/') || l.includes('తెలుగు వార్తలు')) return false;
-    if (l.startsWith('• local18') || l === 'local18' || l === '+') return false;
-    if (l.includes('am ist') || l.includes('pm ist')) {
-      // Remove date/time stamp lines like "Apr 15, 2026 12:48 PM IST"
-      if (/\d{4}/.test(l)) return false;
-    }
-    if (/^[a-z]+,?[a-z]*,?[a-z]*$/.test(l) && l.split(',').length >= 2 && l.length < 60) return false; // breadcrumb location lines
+    if (l.includes('समाचार/') || l.includes('ख़बरें/')) return false;
+    if (l.includes('সংবাদ/') || l.includes('খবর/')) return false;
+    if (l.includes('செய்திகள்/') || l.includes('தமிழ் செய்திகள்')) return false;
+    if (l.includes('వాతలు/') || l.includes(' వార్తలు/')) return false;
+    if (l.includes('news/') && (l.match(/\//g) || []).length >= 2) return false;
+
+    // Date/time lines with year
+    if (l.includes('am ist') || l.includes('pm ist')) return false;
+
+    // Boilerplate phrases
+    if (l.includes('subscribe to our newsletter')) return false;
+    if (l.includes('read more:') || l.includes('also read:')) return false;
+    if (l.includes('copyright ©') || l.includes('all rights reserved')) return false;
+    if (l.includes('follow us on') || l.includes('share this story') || l.includes('share this article')) return false;
+    if (l.includes('advertisement') || l.includes('click here for more')) return false;
+    if (l.includes('read all the latest news')) return false;
+
     return true;
   });
-  return cleaned.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+
+  return lines.join('\n\n').replace(/\n{3,}/g, '\n\n').trim();
 };
 
 // Converts stored UTC HH:MM time to IST 12-hour AM/PM format

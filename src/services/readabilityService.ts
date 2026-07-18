@@ -11,13 +11,45 @@ export interface ExtractedArticle {
 }
 
 const ARTICLE_BODY_SELECTORS = [
-  'article', '[itemprop="articleBody"]', '[class*="article-body"]', 
-  '[class*="article-content"]', '[class*="article-text"]', '[id*="article-body"]', 
-  '[id*="article-content"]', '[class*="story-body"]', '[class*="story-content"]', 
-  '[class*="post-body"]', '[class*="post-content"]', '[class*="entry-content"]', 
-  '[class*="content-body"]', '[class*="news-body"]', '[class*="news-content"]', 
-  '[class*="td-post-content"]', '[class*="article__body"]', '[class*="article__content"]', 
+  'article', '[itemprop="articleBody"]', '[class*="article-body"]',
+  '[class*="article-content"]', '[class*="article-text"]', '[id*="article-body"]',
+  '[id*="article-content"]', '[class*="story-body"]', '[class*="story-content"]',
+  '[class*="post-body"]', '[class*="post-content"]', '[class*="entry-content"]',
+  '[class*="content-body"]', '[class*="news-body"]', '[class*="news-content"]',
+  '[class*="td-post-content"]', '[class*="article__body"]', '[class*="article__content"]',
   'main', '[role="main"]', '.content', '#content'
+];
+
+// Comprehensive boilerplate regex patterns to strip from final text
+const BOILERPLATE_PATTERNS: RegExp[] = [
+  /•?\s*reported\s*by\s*:?\s*.{0,80}/gi,
+  /•?\s*published\s*by\s*:?\s*.{0,80}/gi,
+  /•?\s*edited\s*by\s*:?\s*.{0,80}/gi,
+  /•?\s*written\s*by\s*:?\s*.{0,80}/gi,
+  /•?\s*local18\s*/gi,
+  /last\s*updated\s*:?\s*.{0,100}/gi,
+  /first\s*published\s*:?\s*.{0,100}/gi,
+  /published\s*[-–]\s*.{0,100}ist/gi,
+  /updated\s*[-–]\s*.{0,100}ist/gi,
+  /location\s*:\s*\n?.{0,100}/gi,
+  /photo\s*credit\s*:?\s*.{0,80}/gi,
+  /image\s*credit\s*:?\s*.{0,80}/gi,
+  /image\s*source\s*:?\s*.{0,80}/gi,
+  /read\s*all\s*the\s*latest\s*news.{0,200}/gi,
+  /also\s*read\s*:.{0,200}/gi,
+  /read\s*more\s*:.{0,200}/gi,
+  /subscribe\s*to\s*our\s*newsletter.{0,200}/gi,
+  /follow\s*us\s*on.{0,100}/gi,
+  /share\s*this\s*(story|article|post).{0,100}/gi,
+  /copyright\s*©.{0,100}/gi,
+  /all\s*rights\s*reserved.{0,100}/gi,
+  /\d{1,2}:\d{2}\s*(am|pm)\s*ist/gi,
+  /[a-z]+\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*(am|pm)\s*ist/gi,
+  // Remove breadcrumb-like lines: "తెలుగు వార్తలు/ వార్తలు/తెలంగాణ/"
+  /[^\s]+\/\s*[^\s]+\/\s*[^\s]+\/.{0,100}/g,
+  // Remove single word or short garbage lines (navigation elements)
+  /^\+$/gm,
+  /^•\s*$/gm,
 ];
 
 export class ReadabilityService {
@@ -45,26 +77,46 @@ export class ReadabilityService {
       const html = response.data;
       if (!html || typeof html !== 'string') return null;
 
-      // 1. Initial cleaning using Cheerio
       const $ = cheerio.load(html);
-      
-      $('script, style, iframe, noscript, nav, header, footer, aside, form, svg, video, audio, button, input, textarea, select, dialog').remove();
-      $('a').each((_, el) => { const $el = $(el); $el.replaceWith($el.text()); });
-      
-      // Remove known boilerplate classes
-      $('[class*="ad-"], [id*="ad-"], .ads, #ads, .ad, .advertisement, .social-share, .social-widgets, .comments, #comments, .comments-area, .related-posts, .related-articles, .newsletter-box, .newsletter-signup, .cookie-banner, .cookie-consent, .footer-links, .nav-menu, .sidebar, #sidebar').remove();
 
-      // SMARTER BOUNDARY DETECTION: Remove entire sections containing common garbage phrases
-      $('*').each((_, el) => {
-        const text = $(el).text().toLowerCase().trim();
-        if (text === 'related articles' || text === 'you may also like' || text === 'trending' || 
-            text === 'latest news' || text === 'more stories' || text === 'recommended' || 
-            text === 'advertisement' || text === 'comments' || text === 'read next' || text === 'popular news') {
-          // Find the closest container (like a div or section) and remove it entirely
-          let container = $(el).closest('div, section, aside, ul');
-          if (container.length > 0) {
-            container.remove();
-          } else {
+      // === STAGE 1: Remove HTML junk elements BEFORE Readability ===
+      // Standard noise elements
+      $('script, style, iframe, noscript, nav, header, footer, aside, form, svg, video, audio, button, input, textarea, select, dialog, figure').remove();
+
+      // Ads, social, widgets
+      $([
+        '[class*="ad-"]', '[id*="ad-"]', '.ads', '#ads', '.ad', '.advertisement',
+        '[class*="social"]', '[class*="share"]', '[class*="widget"]',
+        '[class*="comment"]', '#comments', '.comments-area',
+        '[class*="related"]', '[class*="recommended"]', '[class*="you-may"]',
+        '[class*="newsletter"]', '[class*="subscribe"]', '[class*="cookie"]',
+        '[class*="sidebar"]', '#sidebar', '[class*="breadcrumb"]',
+        '[class*="tag"]', '[class*="label"]', '[class*="category-tag"]',
+        '[class*="author"]', '[class*="byline"]', '[class*="reporter"]',
+        '[class*="published-by"]', '[class*="reported-by"]',
+        '[class*="timestamp"]', '[class*="article-date"]',
+        '[class*="location"]', '[class*="source-name"]',
+        '[class*="read-more"]', '[class*="also-read"]',
+        '[class*="trending"]', '[class*="popular"]',
+        '[class*="footer"]', '[class*="nav"]', '[class*="menu"]',
+        '[class*="pagination"]', '[class*="pager"]',
+        '[class*="promo"]', '[class*="banner"]',
+        '.article__meta', '.article-meta', '.post-meta',
+        '.article-bottom', '.article__bottom', '.story-tags',
+        '.fn-content-author', '.fn-author',
+      ].join(', ')).remove();
+
+      // Remove links and replace with text (prevents anchor text noise)
+      $('a').each((_, el) => { const $el = $(el); $el.replaceWith($el.text()); });
+
+      // Remove short noise divs/spans that are navigation/labels
+      $('span, div').each((_, el) => {
+        const text = $(el).text().trim();
+        if (text.length > 0 && text.length < 30) {
+          const lower = text.toLowerCase();
+          if (lower === 'local18' || lower === 'news18' || lower === '+' ||
+              lower === 'more' || lower === 'trending' || lower === 'advertisement' ||
+              lower === 'sponsored' || lower === 'read more' || lower === 'also read') {
             $(el).remove();
           }
         }
@@ -72,26 +124,25 @@ export class ReadabilityService {
 
       const cleanedHtml = $.html();
 
-      // 2. Parse using Mozilla Readability
+      // === STAGE 2: Mozilla Readability ===
       const dom = new JSDOM(cleanedHtml, { url: sourceUrl });
       const reader = new Readability(dom.window.document);
       const parsedArticle = reader.parse();
 
       let finalContent = '';
-      let finalTitle = $('meta[property="og:title"]').attr('content') || 
-                       $('meta[name="twitter:title"]').attr('content') ||
-                       $('h1').first().text() || 
-                       $('title').text() || 
-                       '';
+      let finalTitle =
+        $('meta[property="og:title"]').attr('content') ||
+        $('meta[name="twitter:title"]').attr('content') ||
+        $('h1').first().text() ||
+        $('title').text() || '';
 
       if (parsedArticle && parsedArticle.content) {
-        // Use parsedArticle.content (HTML) to preserve structural paragraphs and lists
         finalContent = this.convertHtmlToFormattedText(parsedArticle.content);
         if (!finalTitle || finalTitle.length < 10) {
           finalTitle = parsedArticle.title || finalTitle;
         }
       } else {
-        // Fallback multi-selector strategy
+        // Fallback: try article body selectors
         logger.warn({ url: sourceUrl }, 'Mozilla Readability failed — trying multi-selector fallback');
         for (const selector of ARTICLE_BODY_SELECTORS) {
           const el = $(selector).first();
@@ -100,12 +151,12 @@ export class ReadabilityService {
             break;
           }
         }
-        
+        // Final fallback: collect paragraphs
         if (!finalContent) {
           const paragraphs: string[] = [];
           $('p').each((_, el) => {
             const text = $(el).text().trim();
-            if (text.length > 15) paragraphs.push(text);
+            if (text.length > 20) paragraphs.push(text);
           });
           finalContent = paragraphs.join('\n\n');
         }
@@ -113,7 +164,7 @@ export class ReadabilityService {
 
       finalTitle = this.cleanText(finalTitle);
       finalContent = this.cleanText(finalContent);
-      
+
       if (finalContent.length < 50) return null;
 
       return {
@@ -128,73 +179,74 @@ export class ReadabilityService {
     }
   }
 
-  /**
-   * Converts HTML to natural text, preserving paragraphs and bullet lists with single blank lines.
-   */
   private static convertHtmlToFormattedText(html: string): string {
     const $ = cheerio.load(html);
-    
-    // Replace block elements with themselves + double newlines
     $('p, h1, h2, h3, h4, h5, h6, div, article, section').each((_, el) => {
       $(el).append('\n\n');
     });
-
     $('br').replaceWith('\n');
-
-    // Format list items with bullet points
     $('li').each((_, el) => {
       $(el).prepend('• ').append('\n');
     });
-
-    // Extract raw text now that spacing is injected
-    const text = $.text();
-    return text;
+    return $.text();
   }
 
   private static cleanText(text: string): string {
     if (!text) return '';
 
-    return text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => {
-        if (line.length === 0) return false;
-        
-        const lowerLine = line.toLowerCase();
-        if (
-          lowerLine.includes('subscribe to our newsletter') ||
-          lowerLine.includes('read more:') ||
-          lowerLine.includes('also read:') ||
-          lowerLine.includes('copyright ©') ||
-          lowerLine.includes('all rights reserved') ||
-          lowerLine.includes('our website uses cookies') ||
-          lowerLine.includes('by continuing to browse') ||
-          lowerLine.includes('share this story') ||
-          lowerLine.includes('follow us on') ||
-          lowerLine.includes('click here for more') ||
-          lowerLine.includes('advertisement') ||
-          lowerLine.includes('reported by') ||
-          lowerLine.includes('published by') ||
-          lowerLine.includes('edited by') ||
-          lowerLine.includes('written by') ||
-          lowerLine.includes('last updated') ||
-          lowerLine.includes('image source') ||
-          lowerLine.includes('photo credit') ||
-          lowerLine.includes('read all the latest news') ||
-          lowerLine.includes('first published:') ||
-          lowerLine === 'related articles' ||
-          lowerLine === 'trending' ||
-          lowerLine === 'read next'
-        ) {
-          return false;
-        }
-        return true;
-      })
-      .map(line => line.replace(/https?:\/\/[^\s]+/gi, '').replace(/www\.[^\s]+/gi, '').trim())
-      .filter(line => line.length > 0)
-      .join('\n\n') // Combine valid lines with a single blank line
+    // === STAGE 3: Regex-based boilerplate removal ===
+    let cleaned = text;
+    for (const pattern of BOILERPLATE_PATTERNS) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+
+    // === STAGE 4: Line-by-line filter ===
+    const lines = cleaned.split('\n').map(l => l.trim()).filter(line => {
+      if (!line) return false;
+      const l = line.toLowerCase();
+
+      // Author/byline lines
+      if (l.startsWith('reported by') || l.startsWith('• reported by')) return false;
+      if (l.startsWith('published by') || l.startsWith('• published by')) return false;
+      if (l.startsWith('edited by') || l.startsWith('written by')) return false;
+
+      // Date/time lines
+      if (l.startsWith('last updated') || l.startsWith('first published')) return false;
+      if (l.startsWith('updated on') || l.startsWith('published on')) return false;
+      if (/^\w+ \d{1,2}, \d{4}/.test(line) && (l.includes('ist') || l.includes('am') || l.includes('pm'))) return false;
+
+      // Location and source
+      if (l.startsWith('location :') || l.startsWith('location:')) return false;
+      if (l.startsWith('photo credit') || l.startsWith('image credit') || l.startsWith('image source')) return false;
+
+      // Navigation/breadcrumbs
+      if (l.includes('వార్తలు/') || l.includes('తెలుగు వార్తలు')) return false;
+      if (l.includes('समाचार/') || l.includes('ख़बरें/')) return false;
+      if (l.includes('সংবাদ/') || l.includes('খবর/')) return false;
+      if (l.includes('செய்திகள்/') || l.includes('தமிழ் செய்திகள்')) return false;
+      if (l.includes('വാർത്ത/') || l.includes('മലയാളം')) return false;
+      if (l.includes('news/') && l.includes('/')) return false;
+
+      // Site boilerplate
+      if (l.includes('subscribe to our newsletter')) return false;
+      if (l.includes('read more:') || l.includes('also read:')) return false;
+      if (l.includes('copyright ©') || l.includes('all rights reserved')) return false;
+      if (l.includes('follow us on') || l.includes('share this story')) return false;
+      if (l.includes('advertisement') || l.includes('click here for more')) return false;
+      if (l.includes('read all the latest news')) return false;
+
+      // Single symbol noise
+      if (line === '+' || line === '•' || line === '|' || line === '-') return false;
+
+      // Source watermarks
+      if (l === 'local18' || l === 'news18' || l === 'ndtv' || l === 'abp live') return false;
+
+      return true;
+    });
+
+    return lines.join('\n\n')
       .replace(/[ \t]+/g, ' ')
-      .replace(/\n{3,}/g, '\n\n') // Max one blank line between paragraphs
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
 
@@ -234,9 +286,7 @@ export class ReadabilityService {
         const isHeadline = blueSpan.length > 0 || tagName === 'h2' || tagName === 'h3' || isQuestion;
 
         if (isHeadline) {
-          let headlineText = text;
-          headlineText = headlineText.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
-
+          let headlineText = text.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
           if (headlineText.length > 15 && !headlineText.toLowerCase().includes('click here') && !headlineText.toLowerCase().includes('current affairs')) {
             if (currentArticle && currentArticle.contentParts.length > 0) {
               articles.push({
@@ -246,7 +296,6 @@ export class ReadabilityService {
                 sourceUrl: currentArticle.sourceUrl
               });
             }
-
             currentArticle = {
               title: headlineText,
               categoryName: currentCategory,
@@ -260,7 +309,6 @@ export class ReadabilityService {
         if (currentArticle) {
           const lowerText = text.toLowerCase();
           if (lowerText.includes('click here for') || lowerText.includes('we are hiring')) return;
-          
           const formattedText = ReadabilityService.convertHtmlToFormattedText($el.html() || '').trim();
           currentArticle.contentParts.push(formattedText);
         }
