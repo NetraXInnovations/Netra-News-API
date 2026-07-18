@@ -173,6 +173,15 @@ export class ReadabilityService {
           lowerLine.includes('follow us on') ||
           lowerLine.includes('click here for more') ||
           lowerLine.includes('advertisement') ||
+          lowerLine.includes('reported by') ||
+          lowerLine.includes('published by') ||
+          lowerLine.includes('edited by') ||
+          lowerLine.includes('written by') ||
+          lowerLine.includes('last updated') ||
+          lowerLine.includes('image source') ||
+          lowerLine.includes('photo credit') ||
+          lowerLine.includes('read all the latest news') ||
+          lowerLine.includes('first published:') ||
           lowerLine === 'related articles' ||
           lowerLine === 'trending' ||
           lowerLine === 'read next'
