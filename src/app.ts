@@ -19,14 +19,57 @@ app.use(cors());
 app.use(compression());
 app.use(express.json());
 
+// Cleans stored content at response time to remove all boilerplate
+const cleanStoredContent = (text: string): string => {
+  if (!text) return '';
+  const lines = text.split('\n');
+  const cleaned = lines.filter(line => {
+    const l = line.trim().toLowerCase();
+    if (!l) return false;
+    if (l.startsWith('reported by') || l.startsWith('• reported by') || l.startsWith('published by') || l.startsWith('• published by')) return false;
+    if (l.startsWith('edited by') || l.startsWith('written by') || l.startsWith('• edited by')) return false;
+    if (l.startsWith('last updated') || l.startsWith('first published') || l.startsWith('• last updated')) return false;
+    if (l.startsWith('location :') || l.startsWith('location:')) return false;
+    if (l.startsWith('photo credit') || l.startsWith('image credit') || l.startsWith('image source')) return false;
+    if (l.includes('వార్తలు/') || l.includes('తెలుగు వార్తలు')) return false;
+    if (l.startsWith('• local18') || l === 'local18' || l === '+') return false;
+    if (l.includes('am ist') || l.includes('pm ist')) {
+      // Remove date/time stamp lines like "Apr 15, 2026 12:48 PM IST"
+      if (/\d{4}/.test(l)) return false;
+    }
+    if (/^[a-z]+,?[a-z]*,?[a-z]*$/.test(l) && l.split(',').length >= 2 && l.length < 60) return false; // breadcrumb location lines
+    return true;
+  });
+  return cleaned.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+};
+
+// Converts stored UTC HH:MM time to IST 12-hour AM/PM format
+const toISTTime = (utcTimeStr: string): string => {
+  if (!utcTimeStr) return '';
+  // If already in AM/PM format, return as-is
+  if (utcTimeStr.includes('AM') || utcTimeStr.includes('PM')) return utcTimeStr;
+  const parts = utcTimeStr.split(':');
+  if (parts.length < 2) return utcTimeStr;
+  const utcHours = parseInt(parts[0], 10);
+  const utcMinutes = parseInt(parts[1], 10);
+  const totalMinutes = utcHours * 60 + utcMinutes + 330; // +5:30 IST
+  const istHours24 = Math.floor(totalMinutes / 60) % 24;
+  const istMins = totalMinutes % 60;
+  const ampm = istHours24 >= 12 ? 'PM' : 'AM';
+  const h12 = istHours24 % 12 || 12;
+  const mm = istMins < 10 ? '0' + istMins : istMins;
+  return `${h12}:${mm} ${ampm}`;
+};
+
 // Helper to format article response
 const formatArticle = (doc: any) => ({
   id: doc._id.toString(),
   title: doc.title,
-  publishedDate: doc.publishedTime ? `${doc.publishedDate}_${doc.publishedTime}` : doc.publishedDate,
+  publishedDate: doc.publishedDate || '',
+  publishedTime: toISTTime(doc.publishedTime || ''),
   language: doc.language,
   category: doc.category,
-  content: doc.content,
+  content: cleanStoredContent(doc.content || ''),
   sourceName: doc.sourceName,
   sourceUrl: doc.sourceUrl
 });
