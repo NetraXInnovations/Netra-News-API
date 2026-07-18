@@ -113,8 +113,22 @@ export class RssIngestionService {
         }
 
         const pubDate = item.isoDate ? new Date(item.isoDate) : new Date();
-        const dateStr = pubDate.toISOString().split('T')[0];
-        const timeStr = pubDate.toISOString().split('T')[1].substring(0, 5);
+        
+        // Convert to IST (+5:30)
+        const istOffset = 5.5 * 60 * 60 * 1000;
+        const istTime = new Date(pubDate.getTime() + istOffset);
+        
+        const dateStr = istTime.toISOString().split('T')[0];
+        
+        // Format 12-hour AM/PM time
+        let hours = istTime.getUTCHours();
+        const minutes = istTime.getUTCMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+        
+        const timeStr = `${hours}:${minutesStr} ${ampm}`;
 
         const updateResult = await Article.updateOne(
           { guid: guid },
