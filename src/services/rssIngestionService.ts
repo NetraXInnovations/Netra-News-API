@@ -103,7 +103,14 @@ export class RssIngestionService {
           }
         }
 
-        const description = this.cleanDescription(item.description || '') || item.summary || '';
+        let description = this.cleanDescription(item.description || '') || item.summary || '';
+
+        if (!finalContent || finalContent.trim().length === 0) {
+          finalContent = description || item.title || 'Content not available at this time.';
+        }
+        if (!description || description.trim().length === 0) {
+          description = finalContent.substring(0, 150) + '...';
+        }
 
         const pubDate = item.isoDate ? new Date(item.isoDate) : new Date();
         const dateStr = pubDate.toISOString().split('T')[0];
