@@ -1,4 +1,5 @@
 import app from './app';
+import cron from 'node-cron';
 import { logger } from './config/logger';
 import { RssIngestionService } from './services/rssIngestionService';
 import { CleanupService } from './services/cleanupService';
@@ -39,27 +40,27 @@ async function startServer() {
       CleanupService.runCleanup().catch((err: any) => logger.error({ error: err.message }, '⚠ Initial startup database cleanup failed (continue)'));
 
       // Set Intervals for schedulers
-      const syncInterval = setInterval(() => {
+      const syncTask = cron.schedule('*/10 * * * *', () => {
         logger.info('Running scheduled background RSS sync...');
         RssIngestionService.syncAllFeeds().catch((err: any) => logger.error({ error: err.message }, '⚠ Background RSS sync failed (continue)'));
-      }, 10 * 60 * 1000); // Check exactly every 10 minutes
+      });
 
-      const affairsCloudInterval = setInterval(() => {
+      const affairsCloudTask = cron.schedule('*/5 * * * *', () => {
         logger.info('Running scheduled background AffairsCloud sync...');
         AffairsCloudParser.syncAffairsCloud().catch((err: any) => logger.error({ error: err.message }, '⚠ Background AffairsCloud sync failed (continue)'));
-      }, 5 * 60 * 1000); // Check every 5 minutes
+      });
 
-      const cleanupInterval = setInterval(() => {
+      const cleanupTask = cron.schedule('0 * * * *', () => {
         logger.info('Running scheduled background database cleanup...');
         CleanupService.runCleanup().catch((err: any) => logger.error({ error: err.message }, '⚠ Background database cleanup failed (continue)'));
-      }, 1 * 60 * 60 * 1000);
+      });
 
       // Graceful shutdown handler
       const shutdown = (signal: string) => {
         logger.info(`Received ${signal}. Shutting down gracefully...`);
-        clearInterval(syncInterval);
-        clearInterval(affairsCloudInterval);
-        clearInterval(cleanupInterval);
+        syncTask.stop();
+        affairsCloudTask.stop();
+        cleanupTask.stop();
         server.close(() => {
           logger.info('HTTP server closed.');
           process.exit(0);
@@ -75,9 +76,9 @@ async function startServer() {
       process.once('SIGTERM', () => shutdown('SIGTERM'));
       process.once('SIGUSR2', () => {
         logger.info('Nodemon restart signal received. Closing port...');
-        clearInterval(syncInterval);
-        clearInterval(affairsCloudInterval);
-        clearInterval(cleanupInterval);
+        syncTask.stop();
+        affairsCloudTask.stop();
+        cleanupTask.stop();
         server.close(() => {
           logger.info('HTTP server closed for restart.');
           process.kill(process.pid, 'SIGUSR2');

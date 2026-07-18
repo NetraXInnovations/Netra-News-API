@@ -76,69 +76,65 @@ export class RssIngestionService {
       for (const item of feed.items) {
         if (!item.link || !item.title) continue;
 
-        // 1. Duplicate check
-        const exists = await Article.exists({ sourceUrl: item.link });
-        if (exists) continue;
+        const guid = item.guid || item.link;
 
-        // 2. Try to extract full content using the full ReadabilityService (with all fallbacks)
         let finalContent: string = '';
         let readingTime: number = 1;
 
         const extracted = await ReadabilityService.extract(item.link);
 
         if (extracted && extracted.content && extracted.content.length >= 100) {
-          // Full article extraction succeeded
           finalContent = extracted.content;
           readingTime = extracted.readingTime;
         } else {
-          // Fallback: use content:encoded or description from RSS feed itself
+          // Fallback logic allowing empty DB workaround
           const rssBody =
+            (item as any)['contentSnippet'] ||
+            item.summary ||
             (item as any)['content:encoded'] ||
             item.content ||
             item.description ||
             '';
 
           if (rssBody) {
-            const cleaned = this.cleanDescription(rssBody);
-            if (cleaned && cleaned.length >= 50) {
-              finalContent = cleaned;
-              readingTime = Math.max(1, Math.round(cleaned.length / 1000));
-            }
-          }
-
-          // If still empty, skip this article
-          if (!finalContent || finalContent.length < 50) {
-            logger.warn({ url: item.link }, '⚠ Skipping article: no content extracted from full page or RSS feed');
-            continue;
+            const cleaned = this.cleanDescription(rssBody) || rssBody;
+            finalContent = cleaned;
+            readingTime = Math.max(1, Math.round(cleaned.length / 1000));
           }
         }
 
-        // 3. Extract description from RSS feed description tag
-        const description = this.cleanDescription(item.description || '');
+        const description = this.cleanDescription(item.description || '') || item.summary || '';
 
-        // 4. Build and save article
         const pubDate = item.isoDate ? new Date(item.isoDate) : new Date();
         const dateStr = pubDate.toISOString().split('T')[0];
         const timeStr = pubDate.toISOString().split('T')[1].substring(0, 5);
 
-        const newArticle = new Article({
-          title: item.title,
-          description: description,
-          content: finalContent,
-          language: source.language,
-          category: source.category,
-          sourceName: source.sourceName,
-          sourceUrl: item.link,
-          publishedDate: dateStr,
-          publishedTime: timeStr,
-          readingTime: readingTime,
-          thumbnail: '',
-          isSaved: false,
-          isActive: true
-        });
+        const updateResult = await Article.updateOne(
+          { guid: guid },
+          {
+            $setOnInsert: {
+              title: item.title,
+              description: description,
+              content: finalContent,
+              language: source.language,
+              category: source.category,
+              sourceName: source.sourceName,
+              sourceUrl: item.link,
+              guid: guid,
+              publishedDate: dateStr,
+              publishedTime: timeStr,
+              readingTime: readingTime,
+              thumbnail: '',
+              isSaved: false,
+              isActive: true
+            }
+          },
+          { upsert: true }
+        );
 
-        await newArticle.save();
-        newArticlesCount++;
+        if (updateResult.upsertedCount > 0) {
+          newArticlesCount++;
+        }
       }
 
       // Update last checked

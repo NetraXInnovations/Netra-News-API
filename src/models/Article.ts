@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IArticle extends Document {
   title: string;
+  guid: string;
   description: string | null;
   content: string;
   language: string;
@@ -20,6 +21,7 @@ export interface IArticle extends Document {
 
 const ArticleSchema = new Schema<IArticle>({
   title: { type: String, required: true },
+  guid: { type: String, required: true, unique: true, index: true },
   description: { type: String, default: null },
   content: { type: String, required: true },
   language: { type: String, required: true, index: true },
