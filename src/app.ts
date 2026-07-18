@@ -58,7 +58,27 @@ const cleanStoredContent = (text: string): string => {
     if (l.startsWith('last updated') || l.startsWith('first published')) return false;
     if (l.startsWith('location :') || l.startsWith('location:')) return false;
     if (l.startsWith('photo credit') || l.startsWith('image credit') || l.startsWith('image source')) return false;
-    if (l === 'local18' || l === 'news18' || l === '+' || l === '•') return false;
+    if (l === 'local18' || l === 'news18' || l === 'news18-telugu' || l === 'ndtv' || l === 'abp live') return false;
+    if (l.startsWith('news18-') || l.startsWith('abp') || l.startsWith('zee news')) return false;
+
+    // Telugu "also read" and related article prompts
+    if (l.startsWith('ఇవి కూడా చదవండి') || l.startsWith('ఇవి కూడా చదవండి:')) return false;
+    if (l.startsWith('కూడా చదవండి') || l.startsWith('మరిన్ని చదవండి')) return false;
+    // Hindi also-read
+    if (l.startsWith('यह भी पढ़ें') || l.startsWith('यह भी पढ़िए')) return false;
+    // Tamil
+    if (l.startsWith('இதையும் படிக்கலாம்') || l.startsWith('மேலும் படிக்க')) return false;
+    // Malayalam
+    if (l.startsWith('ഇതും വായിക്കാം') || l.startsWith('കൂടുതൽ വായിക്കുക')) return false;
+    // Kannada
+    if (l.startsWith('ಇದನ್ನೂ ಓದಿ') || l.startsWith('ಮತ್ತಷ್ಟು ಓದಿ')) return false;
+    // Bengali
+    if (l.startsWith('আরও পড়ুন') || l.startsWith('এটিও পড়ুন')) return false;
+
+    // Twitter/X embed lines
+    if (l.includes('pic.twitter.com/') || l.includes('twitter.com/') || l.includes('t.co/')) return false;
+    if (l.startsWith('— ') && l.includes('@') && l.includes(')')) return false; // "— Username (@handle) July 16, 2026"
+    if (l.match(/^— .+\(@.+\) .+\d{4}$/)) return false; // Twitter attribution
 
     // All language breadcrumbs
     if (l.includes('వార్తలు/') || l.includes('తెలుగు వార్తలు')) return false;

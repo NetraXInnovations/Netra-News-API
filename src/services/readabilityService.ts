@@ -235,11 +235,25 @@ export class ReadabilityService {
       if (l.includes('advertisement') || l.includes('click here for more')) return false;
       if (l.includes('read all the latest news')) return false;
 
+      if (l === 'local18' || l === 'news18' || l === 'news18-telugu' || l === 'ndtv' || l === 'abp live') return false;
+      if (l.startsWith('news18-') || l.startsWith('abp ') || l.startsWith('zee news')) return false;
+
+      // Also-read / Related links in all languages
+      if (l.startsWith('ఇవి కూడా చదవండి') || l.startsWith('కూడా చదవండి') || l.startsWith('మరిన్ని చదవండి')) return false;
+      if (l.startsWith('यह भी पढ़ें') || l.startsWith('यह भी पढ़िए')) return false;
+      if (l.startsWith('இதையும் படிக்கலாம்') || l.startsWith('மேலும் படிக்க')) return false;
+      if (l.startsWith('ഇതും വായിക്കാം') || l.startsWith('കൂടുതൽ വായിക്കുക')) return false;
+      if (l.startsWith('ಇದನ್ನೂ ಓದಿ') || l.startsWith('ಮತ್ತಷ್ಟು ಓದಿ')) return false;
+      if (l.startsWith('আরও পড়ুন') || l.startsWith('এটিও পড়ুন')) return false;
+
+      // Twitter/X embed noise
+      if (l.includes('pic.twitter.com/') || l.includes('twitter.com/') || l.includes('t.co/')) return false;
+      if (l.startsWith('— ') && l.includes('@') && l.includes(')')) return false;
+      if (/^— .+\(@.+\) .+\d{4}$/.test(line)) return false;
+
       // Single symbol noise
       if (line === '+' || line === '•' || line === '|' || line === '-') return false;
 
-      // Source watermarks
-      if (l === 'local18' || l === 'news18' || l === 'ndtv' || l === 'abp live') return false;
 
       return true;
     });
