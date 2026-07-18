@@ -40,7 +40,7 @@ async function startServer() {
       CleanupService.runCleanup().catch((err: any) => logger.error({ error: err.message }, '⚠ Initial startup database cleanup failed (continue)'));
 
       // Set Intervals for schedulers
-      const syncTask = cron.schedule('*/10 * * * *', () => {
+      const syncTask = cron.schedule('*/5 * * * *', () => {
         logger.info('Running scheduled background RSS sync...');
         RssIngestionService.syncAllFeeds().catch((err: any) => logger.error({ error: err.message }, '⚠ Background RSS sync failed (continue)'));
       });
