@@ -130,31 +130,40 @@ export class RssIngestionService {
         
         const timeStr = `${hours}:${minutesStr} ${ampm}`;
 
-        const updateResult = await Article.updateOne(
-          { guid: guid },
-          {
-            $setOnInsert: {
-              title: item.title,
-              description: description,
-              content: finalContent,
-              language: source.language,
-              category: source.category,
-              sourceName: source.sourceName,
-              sourceUrl: item.link,
-              guid: guid,
-              publishedDate: dateStr,
-              publishedTime: timeStr,
-              readingTime: readingTime,
-              thumbnail: '',
-              isSaved: false,
-              isActive: true
-            }
-          },
-          { upsert: true }
-        );
+        try {
+          const updateResult = await Article.updateOne(
+            { $or: [{ guid: guid }, { sourceUrl: item.link }] },
+            {
+              $setOnInsert: {
+                title: item.title,
+                description: description,
+                content: finalContent,
+                language: source.language,
+                category: source.category,
+                sourceName: source.sourceName,
+                sourceUrl: item.link,
+                guid: guid,
+                publishedDate: dateStr,
+                publishedTime: timeStr,
+                readingTime: readingTime,
+                thumbnail: '',
+                isSaved: false,
+                isActive: true
+              }
+            },
+            { upsert: true }
+          );
 
-        if (updateResult.upsertedCount > 0) {
-          newArticlesCount++;
+          if (updateResult.upsertedCount > 0) {
+            newArticlesCount++;
+          }
+        } catch (itemError: any) {
+          if (itemError.code === 11000) {
+            // Duplicate key error, ignore and continue to next item
+            // logger.debug(`Skipping duplicate item: ${item.link}`);
+          } else {
+            logger.warn(`⚠ Item Sync Failed: ${item.link} - ${itemError.message}`);
+          }
         }
       }
 
