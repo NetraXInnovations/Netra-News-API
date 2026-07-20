@@ -10,8 +10,9 @@ export interface ExtractedArticle {
   readingTime: number;
 }
 
-// Min content length to consider an extraction valid
-const MIN_CONTENT_LENGTH = 300;
+// Min content length to consider a Readability extraction valid
+// (final article validation happens in rssIngestionService)
+const MIN_CONTENT_LENGTH = 50;
 
 const ARTICLE_BODY_SELECTORS = [
   'article', '[itemprop="articleBody"]', '[class*="article-body"]',

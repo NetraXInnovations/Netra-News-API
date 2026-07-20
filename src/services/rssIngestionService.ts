@@ -198,10 +198,14 @@ export class RssIngestionService {
         }
 
         // ── Validate content before saving ─────────────────────────────────
-        if (!finalContent || finalContent.trim().length < 300) {
+        // Accept if we have at least a title + any description (50 chars minimum).
+        // The 300-char rule was incorrectly rejecting photogallery and short-form
+        // articles that only have RSS description text.
+        const combinedLength = (finalContent?.trim().length || 0) + (item.title?.trim().length || 0);
+        if (combinedLength < 50) {
           logger.warn(
-            { url: item.link, source: source.sourceName, contentLength: finalContent?.length || 0 },
-            `✗ Article REJECTED: content too short (${finalContent?.length || 0} chars < 300 required) — skipping save`
+            { url: item.link, source: source.sourceName, combinedLength },
+            `✗ Article REJECTED: title+content too short (${combinedLength} chars < 50 required) — skipping save`
           );
           continue;
         }
