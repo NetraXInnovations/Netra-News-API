@@ -3,6 +3,7 @@ import { RssSource } from '../models/RssSource';
 import { Category } from '../models/Category';
 import { Language } from '../models/Language';
 import { logger } from '../config/logger';
+import { RssIngestionService } from '../services/rssIngestionService';
 
 const allSources = [
   // --- ENGLISH ---
@@ -117,10 +118,13 @@ const allSources = [
 
 async function seedMasterPrompt() {
   await connectDB();
-  logger.info('Seeding All Master Sources (English & Hindi) to MongoDB Atlas...');
-  
+  logger.info('Seeding all master sources into MongoDB Atlas...');
+
   try {
     for (const source of allSources) {
+      // Compute stable English slug for filtering
+      const categoryId = RssIngestionService.toSlug(source.englishName || source.category);
+
       // 1. Ensure Language exists
       await Language.updateOne(
         { name: source.language },
@@ -128,33 +132,34 @@ async function seedMasterPrompt() {
         { upsert: true }
       );
 
-      // 2. Ensure Category exists with English mapping
+      // 2. Ensure Category exists with English mapping + stable categoryId
       await Category.updateOne(
         { language: source.language, name: source.category },
-        { 
-          $set: { englishName: source.englishName, enabled: true },
+        {
+          $set:         { englishName: source.englishName, categoryId, enabled: true },
           $setOnInsert: { language: source.language, name: source.category }
         },
         { upsert: true }
       );
 
-      // 3. Add RSS Source
+      // 3. Add / update RSS Source with categoryId
       await RssSource.updateOne(
         { rssUrl: source.rssUrl },
-        { 
-          $set: { 
-            sourceName: source.sourceName,
-            language: source.language,
-            category: source.category,
-            priority: 10,
-            enabled: true
+        {
+          $set: {
+            sourceName:  source.sourceName,
+            language:    source.language,
+            category:    source.category,
+            categoryId:  categoryId,
+            priority:    10,
+            enabled:     true
           }
         },
         { upsert: true }
       );
     }
-    
-    logger.info(`✓ Successfully seeded exactly ${allSources.length} sources (English + Hindi) into MongoDB!`);
+
+    logger.info(`✓ Successfully seeded ${allSources.length} sources into MongoDB!`);
     process.exit(0);
   } catch (err: any) {
     logger.error({ error: err.message }, 'Failed to seed sources');

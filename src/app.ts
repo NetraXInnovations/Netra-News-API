@@ -7,6 +7,7 @@ import { logger } from './config/logger';
 import { Language } from './models/Language';
 import { Category } from './models/Category';
 import { Article } from './models/Article';
+import { RssSource } from './models/RssSource';
 import { SavedArticle } from './models/SavedArticle';
 import { CurrentAffair } from './models/CurrentAffair';
 import { AffairsCloudParser } from './services/affairsCloudParser';
@@ -155,9 +156,13 @@ app.get('/api/v1/categories', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'language parameter is required' });
     }
     const cats = await Category.find({ language: language as string, enabled: true }).sort({ name: 1 }).lean();
-    
-    // Return ONLY the native name as requested by the user
-    res.json(cats.map(c => ({ name: c.name })));
+
+    // Return native name + stable categoryId for filtering
+    res.json(cats.map(c => ({
+      name:       c.name,
+      categoryId: c.categoryId || '',
+      englishName: c.englishName || ''
+    })));
   } catch (error) {
     logger.error(error, 'Error fetching categories');
     res.status(500).json({ error: 'Failed to fetch categories' });
@@ -167,13 +172,15 @@ app.get('/api/v1/categories', async (req: Request, res: Response) => {
 // GET /api/v1/articles
 app.get('/api/v1/articles', async (req: Request, res: Response) => {
   try {
-    const { language, category, page = '1', limit = '20' } = req.query;
-    const pageNum = parseInt(page as string, 10);
+    const { language, category, categoryId, page = '1', limit = '20' } = req.query;
+    const pageNum  = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
-    
+
     const query: any = { isActive: true };
-    if (language) query.language = language;
-    if (category) query.category = category;
+    if (language)   query.language   = language;
+    // categoryId (stable slug) takes priority; fall back to native-script category name
+    if (categoryId) query.categoryId = categoryId;
+    else if (category) query.category = category;
 
     const articles = await Article.find(query)
       .sort({ publishedDate: -1, publishedTime: -1 })
@@ -218,6 +225,54 @@ app.get('/api/v1/search', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error(error, 'Error searching articles');
     res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+// GET /api/v1/system/health
+// Admin endpoint — shows sync status, per-language article counts, and per-feed health.
+app.get('/api/v1/system/health', async (req: Request, res: Response) => {
+  try {
+    const [totalArticles, languageCounts, feeds] = await Promise.all([
+      Article.countDocuments({}),
+      Article.aggregate([
+        { $group: { _id: '$language', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      RssSource.find({}, {
+        sourceName: 1, language: 1, category: 1, categoryId: 1,
+        status: 1, lastSuccessAt: 1, lastFailureAt: 1,
+        consecutiveFailures: 1, lastItemCount: 1
+      }).sort({ language: 1, sourceName: 1 }).lean()
+    ]);
+
+    // Most recent successful sync across all feeds
+    const latestSuccess = feeds
+      .filter(f => f.lastSuccessAt)
+      .map(f => f.lastSuccessAt as Date)
+      .sort((a, b) => b.getTime() - a.getTime())[0] || null;
+
+    const failingFeeds = feeds.filter(f => f.status === 'FAILING' || (f.consecutiveFailures && f.consecutiveFailures > 0));
+
+    res.json({
+      totalArticles,
+      lastSyncSuccess: latestSuccess,
+      languageCounts:  Object.fromEntries(languageCounts.map((l: any) => [l._id, l.count])),
+      failingFeedsCount: failingFeeds.length,
+      feeds: feeds.map((f: any) => ({
+        name:               f.sourceName,
+        language:           f.language,
+        category:           f.category,
+        categoryId:         f.categoryId,
+        status:             f.status || 'UNKNOWN',
+        lastSuccessAt:      f.lastSuccessAt || null,
+        lastFailureAt:      f.lastFailureAt || null,
+        consecutiveFailures: f.consecutiveFailures || 0,
+        lastItemCount:      f.lastItemCount || 0
+      }))
+    });
+  } catch (error) {
+    logger.error(error, 'Error fetching system health');
+    res.status(500).json({ error: 'Failed to fetch system health' });
   }
 });
 
@@ -339,232 +394,127 @@ app.get('/', (req: Request, res: Response) => {
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap');
         body {
-          margin: 0;
-          padding: 0;
+          margin: 0; padding: 0;
           font-family: 'Outfit', sans-serif;
           background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
           color: #ffffff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          display: flex; align-items: center; justify-content: center;
           min-height: 100vh;
         }
         .container {
-          background: rgba(255, 255, 255, 0.05);
+          background: rgba(255,255,255,0.05);
           backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255,255,255,0.1);
           border-radius: 20px;
           padding: 50px 40px;
           text-align: center;
-          max-width: 600px;
+          max-width: 680px;
           box-shadow: 0 20px 40px rgba(0,0,0,0.4);
           animation: fadeIn 1s ease-out;
         }
         h1 {
-          font-size: 2.5rem;
-          margin-bottom: 10px;
+          font-size: 2.5rem; margin-bottom: 10px;
           background: linear-gradient(to right, #38bdf8, #818cf8);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        p {
-          font-size: 1.1rem;
-          color: #94a3b8;
-          margin-bottom: 30px;
+        p { font-size: 1.1rem; color: #94a3b8; margin-bottom: 30px; }
+        .section-title {
+          font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em;
+          text-transform: uppercase; color: #64748b;
+          margin: 24px 0 8px 0; text-align: left;
         }
-        .endpoint-box {
-          background: rgba(0, 0, 0, 0.3);
-          border-radius: 10px;
-          padding: 20px;
-          text-align: left;
-        }
-        .endpoint {
-          margin: 15px 0;
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
+        .endpoint-box { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 20px; text-align: left; }
+        .endpoint { margin: 12px 0; display: flex; flex-direction: column; gap: 4px; }
         .badge {
-          background: #3b82f6;
-          color: white;
-          padding: 4px 10px;
-          border-radius: 20px;
-          font-size: 0.8rem;
-          font-weight: bold;
-          align-self: flex-start;
+          background: #3b82f6; color: white;
+          padding: 3px 10px; border-radius: 20px;
+          font-size: 0.75rem; font-weight: bold; align-self: flex-start;
         }
-        .url {
-          color: #38bdf8;
-          font-family: monospace;
-          font-size: 1.1rem;
-          word-break: break-all;
-        }
-        .desc {
-          font-size: 0.85rem;
-          color: #cbd5e1;
-          margin-top: 2px;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
+        .badge.green  { background: #10b981; }
+        .badge.purple { background: #8b5cf6; }
+        .badge.orange { background: #f59e0b; }
+        .url { color: #38bdf8; font-family: monospace; font-size: 1rem; word-break: break-all; }
+        .desc { font-size: 0.82rem; color: #cbd5e1; margin-top: 1px; }
+        .tip { font-size: 0.78rem; color: #fbbf24; margin-top: 2px; }
+        hr { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 16px 0; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
       </style>
     </head>
     <body>
       <div class="container">
         <h1>Netra News Hub API</h1>
-        <p>Your ultra-fast, dynamic news backend is running perfectly.</p>
-        
+        <p>Ultra-fast, multi-language news backend — running on Railway.</p>
+
         <div class="endpoint-box">
-          
+
+          <div class="section-title">Core</div>
+          <div class="endpoint">
+            <span class="badge orange">System Health</span>
+            <span class="url">/api/v1/system/health</span>
+            <span class="desc">Sync status, per-language article counts, per-feed health</span>
+          </div>
           <div class="endpoint">
             <span class="badge">Languages</span>
             <span class="url">/api/v1/languages</span>
             <span class="desc">Get all supported languages</span>
           </div>
 
-          <div class="endpoint">
-            <span class="badge">English Categories</span>
-            <span class="url">/api/v1/categories?language=English</span>
-            <span class="desc">Get all categories for English news</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Hindi Categories</span>
-            <span class="url">/api/v1/categories?language=Hindi</span>
-            <span class="desc">Get all categories for Hindi news</span>
-          </div>
-
+          <hr/>
+          <div class="section-title">Categories — returns name + categoryId + englishName</div>
           <div class="endpoint">
             <span class="badge">Telugu Categories</span>
             <span class="url">/api/v1/categories?language=Telugu</span>
-            <span class="desc">Get all categories for Telugu news</span>
+            <span class="desc">Returns: [{ name: "ఆంధ్రప్రదేశ్", categoryId: "andhra-pradesh", englishName: "Andhra Pradesh" }, ...]</span>
+          </div>
+          <div class="endpoint">
+            <span class="badge">English / Hindi / Tamil / Kannada…</span>
+            <span class="url">/api/v1/categories?language=English</span>
+            <span class="desc">Replace language= with any supported language</span>
           </div>
 
+          <hr/>
+          <div class="section-title">Articles — filter by language &amp; stable categoryId</div>
           <div class="endpoint">
-            <span class="badge">Tamil Categories</span>
-            <span class="url">/api/v1/categories?language=Tamil</span>
-            <span class="desc">Get all categories for Tamil news</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Kannada Categories</span>
-            <span class="url">/api/v1/categories?language=Kannada</span>
-            <span class="desc">Get all categories for Kannada news</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Malayalam Categories</span>
-            <span class="url">/api/v1/categories?language=Malayalam</span>
-            <span class="desc">Get all categories for Malayalam news</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Marathi Categories</span>
-            <span class="url">/api/v1/categories?language=Marathi</span>
-            <span class="desc">Get all categories for Marathi news</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Bengali Categories</span>
-            <span class="url">/api/v1/categories?language=Bengali</span>
-            <span class="desc">Get all categories for Bengali news</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Gujarati Categories</span>
-            <span class="url">/api/v1/categories?language=Gujarati</span>
-            <span class="desc">Get all categories for Gujarati news</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Punjabi Categories</span>
-            <span class="url">/api/v1/categories?language=Punjabi</span>
-            <span class="desc">Get all categories for Punjabi news</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Urdu Categories</span>
-            <span class="url">/api/v1/categories?language=Urdu</span>
-            <span class="desc">Get all categories for Urdu news</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">English Articles</span>
-            <span class="url">/api/v1/articles?language=English</span>
-            <span class="desc">Get all English news articles</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Hindi Articles</span>
-            <span class="url">/api/v1/articles?language=Hindi</span>
-            <span class="desc">Get all Hindi news articles</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Telugu Articles</span>
+            <span class="badge purple">All Telugu Articles</span>
             <span class="url">/api/v1/articles?language=Telugu</span>
-            <span class="desc">Get all Telugu news articles</span>
+            <span class="desc">Get all Telugu news articles (20 per page)</span>
+          </div>
+          <div class="endpoint">
+            <span class="badge purple">Telugu by Category (recommended)</span>
+            <span class="url">/api/v1/articles?language=Telugu&amp;categoryId=andhra-pradesh</span>
+            <span class="desc">Use categoryId from /categories — works reliably across all scripts</span>
+            <span class="tip">✦ categoryId slugs: andhra-pradesh · telangana · india · world · sports · cricket · business · technology · politics · health</span>
+          </div>
+          <div class="endpoint">
+            <span class="badge purple">With Pagination</span>
+            <span class="url">/api/v1/articles?language=Telugu&amp;page=2&amp;limit=20</span>
+            <span class="desc">Paginate results — default limit is 20</span>
+          </div>
+          <div class="endpoint">
+            <span class="badge purple">Single Article</span>
+            <span class="url">/api/v1/articles/{articleId}</span>
+            <span class="desc">Full article by ID</span>
           </div>
 
+          <hr/>
+          <div class="section-title">Search</div>
           <div class="endpoint">
-            <span class="badge">Tamil Articles</span>
-            <span class="url">/api/v1/articles?language=Tamil</span>
-            <span class="desc">Get all Tamil news articles</span>
+            <span class="badge">Full-Text Search</span>
+            <span class="url">/api/v1/search?q=your+search+term</span>
+            <span class="desc">Search across all article titles and content</span>
           </div>
 
+          <hr/>
+          <div class="section-title">Current Affairs</div>
           <div class="endpoint">
-            <span class="badge">Kannada Articles</span>
-            <span class="url">/api/v1/articles?language=Kannada</span>
-            <span class="desc">Get all Kannada news articles</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Malayalam Articles</span>
-            <span class="url">/api/v1/articles?language=Malayalam</span>
-            <span class="desc">Get all Malayalam news articles</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Marathi Articles</span>
-            <span class="url">/api/v1/articles?language=Marathi</span>
-            <span class="desc">Get all Marathi news articles</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Bengali Articles</span>
-            <span class="url">/api/v1/articles?language=Bengali</span>
-            <span class="desc">Get all Bengali news articles</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Gujarati Articles</span>
-            <span class="url">/api/v1/articles?language=Gujarati</span>
-            <span class="desc">Get all Gujarati news articles</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Punjabi Articles</span>
-            <span class="url">/api/v1/articles?language=Punjabi</span>
-            <span class="desc">Get all Punjabi news articles</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge">Urdu Articles</span>
-            <span class="url">/api/v1/articles?language=Urdu</span>
-            <span class="desc">Get all Urdu news articles</span>
-          </div>
-
-          <div class="endpoint">
-            <span class="badge" style="background: #10b981;">Current Affairs — List</span>
+            <span class="badge green">List All Issues</span>
             <span class="url">/api/v1/current-affairs</span>
             <span class="desc">List of daily issues (issueDate, totalTopics, reading time)</span>
           </div>
-
           <div class="endpoint">
-            <span class="badge" style="background: #10b981;">Current Affairs — Day Detail</span>
-            <span class="url">/api/v1/current-affairs/2026-07-14</span>
-            <span class="desc">Full issue: all sections (NATIONAL AFFAIRS, SPORTS…) with articles &amp; images</span>
+            <span class="badge green">Day Detail</span>
+            <span class="url">/api/v1/current-affairs/2026-07-20</span>
+            <span class="desc">Full issue: all sections with articles &amp; images</span>
           </div>
 
         </div>

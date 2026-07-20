@@ -1,20 +1,22 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ICategory extends Document {
-  language: string; // The language code, e.g. "en" or "english"
-  name: string;
+  language: string;    // e.g. "Telugu"
+  name: string;        // Native script display name, e.g. "ఆంధ్రప్రదేశ్"
+  categoryId: string;  // Stable English slug for API filtering, e.g. "andhra-pradesh"
   englishName?: string;
   enabled: boolean;
   createdAt: Date;
 }
 
 const CategorySchema = new Schema<ICategory>({
-  language: { type: String, required: true, index: true },
-  name: { type: String, required: true, index: true },
-  englishName: { type: String },
-  enabled: { type: Boolean, default: true },
+  language:     { type: String, required: true, index: true },
+  name:         { type: String, required: true, index: true },
+  categoryId:   { type: String, required: true, index: true, default: '' },
+  englishName:  { type: String },
+  enabled:      { type: Boolean, default: true },
 }, {
-  timestamps: true // This will automatically manage createdAt and updatedAt
+  timestamps: true
 });
 
 // Ensure a category is unique per language
