@@ -142,26 +142,44 @@ const formatArticle = (doc: any) => ({
 app.get('/api/v1/languages', async (req: Request, res: Response) => {
   try {
     const langs = await Language.find({ enabled: true }).sort({ name: 1 }).lean();
-    res.json(langs.map(l => ({ name: l.name, code: l.code })));
+    res.json(langs.map(l => ({
+      name:      l.name,        // Display name  e.g. "Telugu"
+      code:      l.code,        // ISO code       e.g. "te"
+      useInApi:  l.name         // Use THIS value in ?language= param
+    })));
   } catch (error) {
     logger.error(error, 'Error fetching languages');
     res.status(500).json({ error: 'Failed to fetch languages' });
   }
 });
 
+// Helper: resolve ?language= param — accepts full name OR ISO code
+// e.g. "Telugu" -> "Telugu", "te" -> "Telugu", "hi" -> "Hindi"
+async function resolveLanguageName(param: string): Promise<string> {
+  // If it looks like an ISO code (2-3 chars), look up by code first
+  if (param.length <= 3) {
+    const byCode = await Language.findOne({ code: param.toLowerCase() }).lean();
+    if (byCode) return byCode.name;
+  }
+  // Otherwise use as-is (full name like "Telugu")
+  return param;
+}
+
 // GET /api/v1/categories
 app.get('/api/v1/categories', async (req: Request, res: Response) => {
   try {
     const { language } = req.query;
     if (!language) {
-      return res.status(400).json({ error: 'language parameter is required' });
+      return res.status(400).json({ error: 'language parameter is required. Use name (e.g. Telugu) or code (e.g. te)' });
     }
-    const cats = await Category.find({ language: language as string, enabled: true }).sort({ name: 1 }).lean();
+    // Resolve code -> name so both ?language=te and ?language=Telugu work
+    const languageName = await resolveLanguageName(language as string);
+    const cats = await Category.find({ language: languageName, enabled: true }).sort({ name: 1 }).lean();
 
     // Return native name + stable categoryId for filtering
     res.json(cats.map(c => ({
-      name:       c.name,
-      categoryId: c.categoryId || '',
+      name:        c.name,
+      categoryId:  c.categoryId || '',
       englishName: c.englishName || ''
     })));
   } catch (error) {
@@ -175,10 +193,13 @@ app.get('/api/v1/articles', async (req: Request, res: Response) => {
   try {
     const { language, category, categoryId, page = '1', limit = '20' } = req.query;
     const pageNum  = parseInt(page as string, 10);
-    const limitNum = parseInt(limit as string, 10);
+    const limitNum = Math.min(parseInt(limit as string, 10), 100); // cap at 100
 
     const query: any = { isActive: true };
-    if (language)   query.language   = language;
+    if (language) {
+      // Accept both full name (Telugu) and ISO code (te)
+      query.language = await resolveLanguageName(language as string);
+    }
     // categoryId (stable slug) takes priority; fall back to native-script category name
     if (categoryId) query.categoryId = categoryId;
     else if (category) query.category = category;
