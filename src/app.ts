@@ -11,6 +11,7 @@ import { RssSource } from './models/RssSource';
 import { SavedArticle } from './models/SavedArticle';
 import { CurrentAffair } from './models/CurrentAffair';
 import { AffairsCloudParser } from './services/affairsCloudParser';
+import { RssIngestionService } from './services/rssIngestionService';
 
 const app = express();
 
@@ -182,11 +183,38 @@ app.get('/api/v1/articles', async (req: Request, res: Response) => {
     if (categoryId) query.categoryId = categoryId;
     else if (category) query.category = category;
 
-    const articles = await Article.find(query)
+    let articles = await Article.find(query)
       .sort({ publishedDate: -1, publishedTime: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
       .lean();
+
+    // Never return empty: if page 1 has 0 results, trigger a background sync
+    // and wait up to 8s for it to produce new articles before responding.
+    if (articles.length === 0 && pageNum === 1) {
+      logger.warn(
+        { query },
+        '⚠ Query returned 0 articles — triggering emergency background sync'
+      );
+      try {
+        // Fire sync and give it 8 seconds to insert at least something
+        await Promise.race([
+          RssIngestionService.syncAllFeeds(),
+          new Promise(resolve => setTimeout(resolve, 8000))
+        ]);
+        // Re-query after sync
+        articles = await Article.find(query)
+          .sort({ publishedDate: -1, publishedTime: -1 })
+          .limit(limitNum)
+          .lean();
+        logger.info(
+          { count: articles.length },
+          `✅ Post-sync re-query returned ${articles.length} articles`
+        );
+      } catch (syncErr: any) {
+        logger.error({ reason: syncErr.message }, '⚠ Emergency sync failed');
+      }
+    }
 
     res.json(articles.map(formatArticle));
   } catch (error) {
@@ -194,6 +222,7 @@ app.get('/api/v1/articles', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch articles' });
   }
 });
+
 
 // GET /api/v1/articles/:articleId
 app.get('/api/v1/articles/:articleId', async (req: Request, res: Response) => {

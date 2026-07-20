@@ -146,15 +146,29 @@ export class RssIngestionService {
         let finalContent = '';
         let readingTime = 1;
 
+        // Step A: Try full Readability extraction
+        logger.info({ url: item.link, source: source.sourceName }, '📥 RSS item: attempting full extraction');
         try {
           const extracted = await ReadabilityService.extract(item.link);
-          if (extracted && extracted.content && extracted.content.length >= 100) {
+          if (extracted && extracted.content && extracted.content.length >= 300) {
             finalContent  = extracted.content;
             readingTime   = extracted.readingTime;
+            logger.info(
+              { url: item.link, contentLength: extracted.content.length },
+              `✓ Full extraction OK: ${extracted.content.length} chars`
+            );
+          } else if (extracted && extracted.content) {
+            logger.warn(
+              { url: item.link, contentLength: extracted.content.length },
+              `⚠ Extraction returned content but too short (${extracted.content.length} chars < 300) — using RSS fallback`
+            );
+          } else {
+            logger.warn({ url: item.link }, '⚠ Full extraction returned null — using RSS fallback');
           }
-        } catch (_) { /* extraction failed — fall through to RSS body */ }
+        } catch (_) { /* extraction threw — fall through to RSS body */ }
 
-        if (!finalContent) {
+        // Step B: RSS body fallback
+        if (!finalContent || finalContent.trim().length < 300) {
           const rssBody =
             (item as any)['contentSnippet'] ||
             item.summary ||
@@ -167,6 +181,10 @@ export class RssIngestionService {
             const cleaned = this.cleanDescription(rssBody) || rssBody;
             finalContent  = cleaned;
             readingTime   = Math.max(1, Math.round(cleaned.length / 1000));
+            logger.info(
+              { url: item.link, contentLength: finalContent.length, source: 'RSS-body-fallback' },
+              `⚠ Using RSS body fallback: ${finalContent.length} chars`
+            );
           }
         }
 
@@ -176,7 +194,16 @@ export class RssIngestionService {
           finalContent = description || item.title || 'Content not available at this time.';
         }
         if (!description || description.trim().length === 0) {
-          description = finalContent.substring(0, 150) + '...';
+          description = finalContent.substring(0, 200) + '...';
+        }
+
+        // ── Validate content before saving ─────────────────────────────────
+        if (!finalContent || finalContent.trim().length < 300) {
+          logger.warn(
+            { url: item.link, source: source.sourceName, contentLength: finalContent?.length || 0 },
+            `✗ Article REJECTED: content too short (${finalContent?.length || 0} chars < 300 required) — skipping save`
+          );
+          continue;
         }
 
         // ── Date / Time conversion to IST ─────────────────────────────────
@@ -221,6 +248,15 @@ export class RssIngestionService {
 
           if (updateResult.upsertedCount > 0) {
             newArticlesCount++;
+            logger.info(
+              { url: item.link, source: source.sourceName, contentLength: finalContent.length },
+              `✅ Article SAVED to MongoDB: "${item.title?.substring(0, 60)}"`
+            );
+          } else {
+            logger.info(
+              { url: item.link },
+              '⏭ Article already exists in MongoDB — skipped (duplicate)'
+            );
           }
         } catch (itemError: any) {
           if (itemError.code === 11000) {

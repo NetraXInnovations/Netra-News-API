@@ -10,6 +10,9 @@ export interface ExtractedArticle {
   readingTime: number;
 }
 
+// Min content length to consider an extraction valid
+const MIN_CONTENT_LENGTH = 300;
+
 const ARTICLE_BODY_SELECTORS = [
   'article', '[itemprop="articleBody"]', '[class*="article-body"]',
   '[class*="article-content"]', '[class*="article-text"]', '[id*="article-body"]',
@@ -45,45 +48,70 @@ const BOILERPLATE_PATTERNS: RegExp[] = [
   /all\s*rights\s*reserved.{0,100}/gi,
   /\d{1,2}:\d{2}\s*(am|pm)\s*ist/gi,
   /[a-z]+\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*(am|pm)\s*ist/gi,
-  // Remove breadcrumb-like lines: "తెలుగు వార్తలు/ వార్తలు/తెలంగాణ/"
   /[^\s]+\/\s*[^\s]+\/\s*[^\s]+\/.{0,100}/g,
-  // Remove single word or short garbage lines (navigation elements)
   /^\+$/gm,
   /^•\s*$/gm,
 ];
 
 export class ReadabilityService {
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Main extraction entry point
+  // ─────────────────────────────────────────────────────────────────────────
   static async extract(sourceUrl: string): Promise<ExtractedArticle | null> {
+    const logCtx = { url: sourceUrl };
+
     try {
-      logger.info({ url: sourceUrl }, 'Starting article content extraction');
+      // ── STEP 1: Download HTML ──────────────────────────────────────────────
+      logger.info(logCtx, '📥 Step 1: Downloading article HTML');
+      let html: string;
+      try {
+        const response = await axios.get(sourceUrl, {
+          timeout: 15000,
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept':
+              'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9,te;q=0.8,hi;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Pragma': 'no-cache',
+            'Cache-Control': 'no-cache'
+          }
+        });
+        html = response.data;
+        logger.info(logCtx, `✓ Step 1: HTML downloaded (${(html?.length || 0).toLocaleString()} bytes)`);
+      } catch (downloadErr: any) {
+        logger.error(
+          { ...logCtx, reason: downloadErr.message, status: downloadErr.response?.status },
+          `✗ Step 1 FAILED: HTML download failed — ${downloadErr.message}`
+        );
+        return null;
+      }
 
-      const response = await axios.get(sourceUrl, {
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9,te;q=0.8,hi;q=0.7',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-          'Sec-Fetch-Dest': 'document',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Site': 'cross-site',
-          'Pragma': 'no-cache',
-          'Cache-Control': 'no-cache'
-        }
-      });
+      if (!html || typeof html !== 'string') {
+        logger.warn(logCtx, '✗ Step 1 FAILED: Response body is empty or non-string');
+        return null;
+      }
 
-      const html = response.data;
-      if (!html || typeof html !== 'string') return null;
-
+      // ── STEP 2: Load + Remove noise elements ──────────────────────────────
+      logger.info(logCtx, '🧹 Step 2: Removing ads, images, nav, and noise elements');
       const $ = cheerio.load(html);
 
-      // === STAGE 1: Remove HTML junk elements BEFORE Readability ===
-      // Standard noise elements
-      $('script, style, iframe, noscript, nav, header, footer, aside, form, svg, video, audio, button, input, textarea, select, dialog, figure').remove();
+      // Remove all images — we never want images in extracted content
+      $('img, picture, source, figure, figcaption, video, audio, svg, canvas').remove();
 
-      // Ads, social, widgets
+      // Remove scripts, styles, iframes
+      $('script, style, iframe, noscript, form, button, input, textarea, select, dialog').remove();
+
+      // Remove structural noise
+      $('nav, header, footer, aside').remove();
+
+      // Remove ads, social, widgets, comments, related, newsletter, etc.
       $([
         '[class*="ad-"]', '[id*="ad-"]', '.ads', '#ads', '.ad', '.advertisement',
         '[class*="social"]', '[class*="share"]', '[class*="widget"]',
@@ -106,120 +134,198 @@ export class ReadabilityService {
         '.fn-content-author', '.fn-author',
       ].join(', ')).remove();
 
-      // Remove links and replace with text (prevents anchor text noise)
+      // Replace anchor tags with just their text
       $('a').each((_, el) => { const $el = $(el); $el.replaceWith($el.text()); });
 
-      // Remove short noise divs/spans that are navigation/labels
+      // Remove short noise spans/divs (navigation labels, source names)
       $('span, div').each((_, el) => {
         const text = $(el).text().trim();
         if (text.length > 0 && text.length < 30) {
           const lower = text.toLowerCase();
-          if (lower === 'local18' || lower === 'news18' || lower === '+' ||
-              lower === 'more' || lower === 'trending' || lower === 'advertisement' ||
-              lower === 'sponsored' || lower === 'read more' || lower === 'also read') {
-            $(el).remove();
-          }
+          if (
+            lower === 'local18' || lower === 'news18' || lower === '+' ||
+            lower === 'more' || lower === 'trending' || lower === 'advertisement' ||
+            lower === 'sponsored' || lower === 'read more' || lower === 'also read'
+          ) { $(el).remove(); }
         }
       });
 
-      const cleanedHtml = $.html();
+      logger.info(logCtx, '✓ Step 2: Noise removed');
 
-      // === STAGE 2: Mozilla Readability ===
-      const dom = new JSDOM(cleanedHtml, { url: sourceUrl });
-      const reader = new Readability(dom.window.document);
-      const parsedArticle = reader.parse();
-
-      let finalContent = '';
+      // ── STEP 3: Extract title ──────────────────────────────────────────────
       let finalTitle =
         $('meta[property="og:title"]').attr('content') ||
         $('meta[name="twitter:title"]').attr('content') ||
-        $('h1').first().text() ||
-        $('title').text() || '';
+        $('h1').first().text().trim() ||
+        $('title').text().trim() || '';
+      finalTitle = this.cleanText(finalTitle);
+      logger.info({ ...logCtx, title: finalTitle.substring(0, 80) }, '✓ Step 3: Title extracted');
 
-      if (parsedArticle && parsedArticle.content) {
-        finalContent = this.convertHtmlToFormattedText(parsedArticle.content);
-        if (!finalTitle || finalTitle.length < 10) {
-          finalTitle = parsedArticle.title || finalTitle;
+      // ── STEP 4: Mozilla Readability extraction ─────────────────────────────
+      logger.info(logCtx, '📖 Step 4: Running Mozilla Readability');
+      const cleanedHtml = $.html();
+      let finalContent = '';
+
+      try {
+        const dom = new JSDOM(cleanedHtml, { url: sourceUrl });
+        const reader = new Readability(dom.window.document);
+        const parsedArticle = reader.parse();
+
+        if (parsedArticle && parsedArticle.content) {
+          finalContent = this.convertHtmlToFormattedText(parsedArticle.content);
+          if (!finalTitle || finalTitle.length < 10) {
+            finalTitle = parsedArticle.title || finalTitle;
+          }
+          logger.info(
+            { ...logCtx, contentLength: finalContent.length },
+            `✓ Step 4: Readability extracted ${finalContent.length} chars`
+          );
+        } else {
+          logger.warn(logCtx, '⚠ Step 4: Readability returned null — trying fallback selectors');
         }
-      } else {
-        // Fallback: try article body selectors
-        logger.warn({ url: sourceUrl }, 'Mozilla Readability failed — trying multi-selector fallback');
+      } catch (readabilityErr: any) {
+        logger.warn(
+          { ...logCtx, reason: readabilityErr.message },
+          `⚠ Step 4: Readability threw error — ${readabilityErr.message}`
+        );
+      }
+
+      // ── STEP 5: Fallback — article body selectors ──────────────────────────
+      if (!finalContent || finalContent.length < MIN_CONTENT_LENGTH) {
+        logger.info(logCtx, '🔍 Step 5: Trying article body CSS selectors');
         for (const selector of ARTICLE_BODY_SELECTORS) {
           const el = $(selector).first();
-          if (el.length > 0 && el.text().trim().length > 100) {
+          if (el.length > 0 && el.text().trim().length > MIN_CONTENT_LENGTH) {
             finalContent = this.convertHtmlToFormattedText(el.html() || '');
+            logger.info(
+              { ...logCtx, selector, contentLength: finalContent.length },
+              `✓ Step 5: Content found via selector "${selector}"`
+            );
             break;
           }
         }
-        // Final fallback: collect paragraphs
-        if (!finalContent) {
-          const paragraphs: string[] = [];
-          $('p').each((_, el) => {
-            const text = $(el).text().trim();
-            if (text.length > 20) paragraphs.push(text);
-          });
+      }
+
+      // ── STEP 6: Fallback — collect all <p> tags ────────────────────────────
+      if (!finalContent || finalContent.length < MIN_CONTENT_LENGTH) {
+        logger.info(logCtx, '🔍 Step 6: Collecting all <p> tags as last resort');
+        const paragraphs: string[] = [];
+        $('p').each((_, el) => {
+          const text = $(el).text().trim();
+          if (text.length > 30) paragraphs.push(text);
+        });
+        if (paragraphs.length > 0) {
           finalContent = paragraphs.join('\n\n');
+          logger.info(
+            { ...logCtx, paragraphCount: paragraphs.length, contentLength: finalContent.length },
+            `✓ Step 6: Collected ${paragraphs.length} paragraphs`
+          );
         }
       }
 
-      finalTitle = this.cleanText(finalTitle);
+      // ── STEP 7: Clean text ─────────────────────────────────────────────────
+      finalTitle   = this.cleanText(finalTitle);
       finalContent = this.cleanText(finalContent);
 
-      if (finalContent.length < 50) return null;
+      // ── STEP 8: Validate content ───────────────────────────────────────────
+      if (!finalContent || finalContent.trim().length < MIN_CONTENT_LENGTH) {
+        logger.warn(
+          { ...logCtx, contentLength: finalContent?.length || 0, minRequired: MIN_CONTENT_LENGTH },
+          `✗ Step 8 FAILED: Extracted content too short (${finalContent?.length || 0} chars < ${MIN_CONTENT_LENGTH} required) — article rejected`
+        );
+        return null;
+      }
+
+      logger.info(
+        { ...logCtx, contentLength: finalContent.length, titleLength: finalTitle.length },
+        `✅ Extraction complete: ${finalContent.length} chars, title="${finalTitle.substring(0, 60)}"`
+      );
 
       return {
-        title: finalTitle,
-        content: finalContent,
+        title:       finalTitle,
+        content:     finalContent,
         readingTime: this.calculateReadingTime(finalContent)
       };
 
     } catch (error: any) {
-      logger.error({ url: sourceUrl, error: error.message }, 'Failed to extract article content');
+      logger.error(
+        { ...logCtx, reason: error.message, stack: error.stack },
+        `✗ Extraction pipeline crashed: ${error.message}`
+      );
       return null;
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Convert HTML to clean plain text, preserving structure
+  // ─────────────────────────────────────────────────────────────────────────
   private static convertHtmlToFormattedText(html: string): string {
     const $ = cheerio.load(html);
-    $('p, h1, h2, h3, h4, h5, h6, div, article, section').each((_, el) => {
+
+    // Remove images from extracted content
+    $('img, picture, source, figure, figcaption, video, audio, svg').remove();
+
+    // Preserve headings
+    $('h1, h2, h3, h4, h5, h6').each((_, el) => {
+      $(el).prepend('\n').append('\n\n');
+    });
+
+    // Preserve paragraphs
+    $('p, div, article, section').each((_, el) => {
       $(el).append('\n\n');
     });
+
+    // Preserve line breaks
     $('br').replaceWith('\n');
+
+    // Preserve bullet lists
     $('li').each((_, el) => {
       $(el).prepend('• ').append('\n');
     });
+
+    // Preserve table rows
+    $('tr').each((_, el) => {
+      $(el).append('\n');
+    });
+    $('td, th').each((_, el) => {
+      $(el).append('\t');
+    });
+
     return $.text();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Stage 3+4: Regex + line-by-line boilerplate removal
+  // ─────────────────────────────────────────────────────────────────────────
   private static cleanText(text: string): string {
     if (!text) return '';
 
-    // === STAGE 3: Regex-based boilerplate removal ===
+    // Stage 3: regex boilerplate patterns
     let cleaned = text;
     for (const pattern of BOILERPLATE_PATTERNS) {
       cleaned = cleaned.replace(pattern, '');
     }
 
-    // === STAGE 4: Line-by-line filter ===
+    // Stage 4: line-by-line filter
     const lines = cleaned.split('\n').map(l => l.trim()).filter(line => {
       if (!line) return false;
       const l = line.toLowerCase();
 
-      // Author/byline lines
+      // Author/byline
       if (l.startsWith('reported by') || l.startsWith('• reported by')) return false;
       if (l.startsWith('published by') || l.startsWith('• published by')) return false;
       if (l.startsWith('edited by') || l.startsWith('written by')) return false;
 
-      // Date/time lines
+      // Date/time
       if (l.startsWith('last updated') || l.startsWith('first published')) return false;
       if (l.startsWith('updated on') || l.startsWith('published on')) return false;
       if (/^\w+ \d{1,2}, \d{4}/.test(line) && (l.includes('ist') || l.includes('am') || l.includes('pm'))) return false;
 
-      // Location and source
+      // Location/credit
       if (l.startsWith('location :') || l.startsWith('location:')) return false;
       if (l.startsWith('photo credit') || l.startsWith('image credit') || l.startsWith('image source')) return false;
 
-      // Navigation/breadcrumbs
+      // Navigation / breadcrumbs
       if (l.includes('వార్తలు/') || l.includes('తెలుగు వార్తలు')) return false;
       if (l.includes('समाचार/') || l.includes('ख़बरें/')) return false;
       if (l.includes('সংবাদ/') || l.includes('খবর/')) return false;
@@ -227,18 +333,19 @@ export class ReadabilityService {
       if (l.includes('വാർത്ത/') || l.includes('മലയാളം')) return false;
       if (l.includes('news/') && l.includes('/')) return false;
 
-      // Site boilerplate
+      // Generic boilerplate
       if (l.includes('subscribe to our newsletter')) return false;
       if (l.includes('read more:') || l.includes('also read:')) return false;
       if (l.includes('copyright ©') || l.includes('all rights reserved')) return false;
-      if (l.includes('follow us on') || l.includes('share this story')) return false;
+      if (l.includes('follow us on') || l.includes('share this story') || l.includes('share this article')) return false;
       if (l.includes('advertisement') || l.includes('click here for more')) return false;
       if (l.includes('read all the latest news')) return false;
 
+      // Source name noise
       if (l === 'local18' || l === 'news18' || l === 'news18-telugu' || l === 'ndtv' || l === 'abp live') return false;
       if (l.startsWith('news18-') || l.startsWith('abp ') || l.startsWith('zee news')) return false;
 
-      // Also-read / Related links in all languages
+      // "Also read" in all languages
       if (l.startsWith('ఇవి కూడా చదవండి') || l.startsWith('కూడా చదవండి') || l.startsWith('మరిన్ని చదవండి')) return false;
       if (l.startsWith('यह भी पढ़ें') || l.startsWith('यह भी पढ़िए')) return false;
       if (l.startsWith('இதையும் படிக்கலாம்') || l.startsWith('மேலும் படிக்க')) return false;
@@ -246,14 +353,13 @@ export class ReadabilityService {
       if (l.startsWith('ಇದನ್ನೂ ಓದಿ') || l.startsWith('ಮತ್ತಷ್ಟು ಓದಿ')) return false;
       if (l.startsWith('আরও পড়ুন') || l.startsWith('এটিও পড়ুন')) return false;
 
-      // Twitter/X embed noise
+      // Twitter/X noise
       if (l.includes('pic.twitter.com/') || l.includes('twitter.com/') || l.includes('t.co/')) return false;
       if (l.startsWith('— ') && l.includes('@') && l.includes(')')) return false;
       if (/^— .+\(@.+\) .+\d{4}$/.test(line)) return false;
 
       // Single symbol noise
       if (line === '+' || line === '•' || line === '|' || line === '-') return false;
-
 
       return true;
     });
@@ -264,6 +370,9 @@ export class ReadabilityService {
       .trim();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // AffairsCloud extractor (unchanged)
+  // ─────────────────────────────────────────────────────────────────────────
   static async extractAffairsCloud(sourceUrl: string): Promise<Array<{ title: string; content: string; categoryName: string; sourceUrl: string }> | null> {
     try {
       const response = await axios.get(sourceUrl, {
@@ -304,17 +413,17 @@ export class ReadabilityService {
           if (headlineText.length > 15 && !headlineText.toLowerCase().includes('click here') && !headlineText.toLowerCase().includes('current affairs')) {
             if (currentArticle && currentArticle.contentParts.length > 0) {
               articles.push({
-                title: currentArticle.title,
-                content: currentArticle.contentParts.join('\n\n'),
+                title:        currentArticle.title,
+                content:      currentArticle.contentParts.join('\n\n'),
                 categoryName: currentArticle.categoryName,
-                sourceUrl: currentArticle.sourceUrl
+                sourceUrl:    currentArticle.sourceUrl
               });
             }
             currentArticle = {
-              title: headlineText,
+              title:        headlineText,
               categoryName: currentCategory,
               contentParts: [],
-              sourceUrl: `${sourceUrl}#${slugify(headlineText)}`
+              sourceUrl:    `${sourceUrl}#${slugify(headlineText)}`
             };
             return;
           }
@@ -330,10 +439,10 @@ export class ReadabilityService {
 
       if (currentArticle && currentArticle.contentParts.length > 0) {
         articles.push({
-          title: currentArticle.title,
-          content: currentArticle.contentParts.join('\n\n'),
+          title:        currentArticle.title,
+          content:      currentArticle.contentParts.join('\n\n'),
           categoryName: currentArticle.categoryName,
-          sourceUrl: currentArticle.sourceUrl
+          sourceUrl:    currentArticle.sourceUrl
         });
       }
 
