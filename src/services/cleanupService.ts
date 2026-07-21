@@ -4,7 +4,7 @@ import { logger } from '../config/logger';
 
 export class CleanupService {
   /**
-   * Deletes articles older than 48 hours that are NOT saved by any user.
+   * Deletes articles older than 24 hours that are NOT saved by any user.
    *
    * IMPORTANT: Only runs when syncSucceeded = true.
    * This prevents the DB from being emptied during a temporary RSS failure —
@@ -19,16 +19,16 @@ export class CleanupService {
     try {
       logger.info('Starting scheduled database cleanup...');
 
-      const twoDaysAgo = new Date();
-      twoDaysAgo.setHours(twoDaysAgo.getHours() - 48);
+      const oneDayAgo = new Date();
+      oneDayAgo.setHours(oneDayAgo.getHours() - 24);
 
       const result = await Article.deleteMany({
-        createdAt: { $lt: twoDaysAgo },
+        createdAt: { $lt: oneDayAgo },
         isSaved: false
       });
 
       const caResult = await CurrentAffair.deleteMany({
-        createdAt: { $lt: twoDaysAgo },
+        createdAt: { $lt: oneDayAgo },
         isSaved: false
       });
 
